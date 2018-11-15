@@ -19,3 +19,7 @@ Chain::YourObject('param1','param2)->result;
 Chain::YourObject('param1','param2)->instance;      
 ```
 
+### Plans
+
+* Use external DI
+* Test library with different namespace objects
