@@ -1,5 +1,7 @@
 ## The Chain.
 
+composer require tommyknocker/chain
+
 **Library that chains every class without modifying it.**
 
 ### Examples
