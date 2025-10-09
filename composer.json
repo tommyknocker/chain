@@ -10,7 +10,7 @@
     }
   ],
   "require": {
-    "php": "^8.4",
+    "php": "^8.0",
     "psr/container": "^2.0"
   },
   "require-dev": {
