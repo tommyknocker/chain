@@ -65,7 +65,6 @@ composer require tommyknocker/chain
 ## Quick example
 
 ```php
-<?php
 use tommyknocker\chain\Chain;
 
 // Start with a User object
