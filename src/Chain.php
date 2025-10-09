@@ -1,238 +1,162 @@
 <?php
+declare(strict_types=1);
 
-namespace Tommyknocker\Chain;
+namespace tommyknocker\chain;
 
-use ReflectionClass;
-use ReflectionMethod;
-use ReflectionException;
-use ReflectionObject;
-use Exception;
+use BadMethodCallException;
+use InvalidArgumentException;
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\ContainerInterface;
+use Psr\Container\NotFoundExceptionInterface;
+use RuntimeException;
 
-/**
- * Class Chain
- * @package Tommyknocker\Chain
- * @author Tommyknocker <me@isfrom.space>
- * @license http://www.gnu.org/licenses/lgpl.txt LGPLv3
- */
 class Chain
 {
+    protected object $instance;
+    protected mixed $result = null;
+    private static ?ContainerInterface $resolver = null;
 
-    /**
-     * Current object's name
-     * @var string
-     */
-    private $currentObject = null;
-
-    /**
-     * Protect from creating object
-     */
-    private function __construct($currentObject)
+    public static function setResolver(ContainerInterface $resolver): void
     {
-        $this->currentObject = $currentObject;
+        self::$resolver = $resolver;
     }
 
     /**
-     * Call class method
-     * @param string $method
-     * @param array $params
-     * @throws Exception
+     * @param string|object $target
+     * @return $this
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
+     * @throws RuntimeException
+     */
+    public function change(string|object $target): self
+    {
+        if (is_object($target)) {
+            $this->instance = $target;
+            return $this;
+        }
+
+        if (self::$resolver && self::$resolver->has($target)) {
+            $this->instance = self::$resolver->get($target);
+            return $this;
+        }
+
+        throw new RuntimeException("Cannot resolve target: $target");
+    }
+
+    /**
+     * @param object $instance
+     */
+    private function __construct(object $instance)
+    {
+        $this->instance = $instance;
+    }
+
+    /**
+     * Chain initialization
+     * @param object $instance
      * @return self
      */
-    public function __call($method, $params)
+    public static function from(object $instance): self
     {
-        $objectData = State::get($this->currentObject);
+        return new self($instance);
+    }
 
-        if (in_array('result', $params, true)) {
-            $params[array_search('result', $params)] = $objectData['result'];
+    /***
+     * A convenient helper for creating an object by class name and constructor arguments
+     * @param string $class
+     * @param mixed ...$args
+     * @return self
+     */
+    public static function make(string $class, mixed ...$args): self
+    {
+        if (!class_exists($class)) {
+            throw new InvalidArgumentException("Class $class not found.");
+        }
+        /** @var object $obj */
+        $obj = new $class(...$args);
+        return new self($obj);
+    }
+
+    /**
+     * Call a method on the current object, store the result, and return the Chain.
+     * @param string $method
+     * @param mixed ...$args
+     * @return $this
+     */
+    public function call(string $method, mixed ...$args): self
+    {
+        if (!method_exists($this->instance, $method)) {
+            throw new BadMethodCallException(
+                sprintf('Method %s::%s() not found.', $this->instance::class, $method)
+            );
         }
 
-        if ($objectData['callable'] && !method_exists($objectData['instance'], $method)) {
-            $params = array_merge([$method], [$params]);
-            $method = '__call';
-        }
+        /** @var mixed $result */
+        $result = $this->instance->{$method}(...$args);
+        $this->result = $result;
 
-        $objectReflectionMethod = new ReflectionMethod($objectData['instance'], $method);
-        State::setResult($this->currentObject, $objectReflectionMethod->invokeArgs($objectData['instance'], $params));
+        // If the method returns an object, chaining can continue on that object.
+        if (is_object($result)) {
+            $this->instance = $result;
+        }
 
         return $this;
     }
 
     /**
-     * Magic __callStatic method
-     * @param string $name name of a class
-     * @param array $args Optional arguments
-     * @return self
-     * @throws Exception
+     * Direct method call via __call
+     * @param string $method
+     * @param array $args
+     * @return $this
      */
-    public static function __callStatic($name, $args)
+    public function __call(string $method, array $args): self
     {
+        return $this->call($method, ...$args);
+    }
 
-        $chain = new self($name);
 
-        $objectData = State::get($name);
-
-        if ($objectData && $objectData['singleton']) {
-            return $chain;
-        }
-
-        try {
-            $objectInstance = new ReflectionClass($name);
-        } catch (ReflectionException $e) {
-            if (!class_exists($name)) {
-                throw new Exception('Class ' . $name . ' does not exist');
-            } else {
-                $objectInstance = new ReflectionClass($name);
-            }
-        }
-
-        if (!$objectInstance->isInstantiable()) {
-            throw new Exception('Cannot create object from class: ' . $name);
-        }
-
-        State::set($name,
-            $objectInstance->getConstructor() ? $objectInstance->newInstanceArgs($args) : $objectInstance->newInstance(),
-            self::getObjectParams($name, $objectInstance));
-
-        return $chain;
+    /**
+     * Apply a function to the current object while keeping the context unchanged.
+     * @param callable $fn
+     * @return $this
+     */
+    public function tap(callable $fn): self
+    {
+        $fn($this->instance);
+        return $this;
     }
 
     /**
-     *  Protect from cloning
+     * Transform the current object (the return value from the mapper becomes a new instance).
+     * @param callable $fn
+     * @return $this
      */
-    private function __clone()
+    public function map(callable $fn): self
     {
-
+        $mapped = $fn($this->instance);
+        if (!is_object($mapped)) {
+            throw new RuntimeException('map() must return an object.');
+        }
+        $this->instance = $mapped;
+        $this->result = null;
+        return $this;
     }
 
     /**
-     * Get value from class
-     * @param string $param
+     * Get current object
+     * @return object
+     */
+    public function instance(): object
+    {
+        return $this->instance;
+    }
+
+    /**
+     * Get last result
      * @return mixed
      */
-    public function __get($param)
+    public function result(): mixed
     {
-        $objectData = State::get($this->currentObject);
-
-        switch ($param) {
-            case 'instance':
-                return $objectData['instance'];
-            case 'result':
-                return $objectData['result'];
-            default:
-                return $objectData['instance']->$param;
-        }
+        return $this->result;
     }
-
-    /**
-     * Set class variable
-     * @param string $param
-     * @param mixed $value
-     */
-    public function __set($param, $value)
-    {
-        $objectData = State::get($this->currentObject);
-        $objectData['instance']->$param = $value;
-    }
-
-    /**
-     * Return the App version
-     * @return string
-     */
-    public function __toString()
-    {
-        return 'Chain library. Version 0.0.1. Written by Tommyknocker <me@isfrom.space>';
-    }
-
-    /**
-     * unset() overloading
-     * @param string $name
-     */
-    public function __unset($name)
-    {
-        $objectData = State::get($this->currentObject);
-
-        switch ($name) {
-            case 'instance':
-                State::delete($name);
-                break;
-            default:
-                unset($objectData['instance']->$name);
-        }
-    }
-
-    /**
-     * Protect from unserializing
-     */
-    private function __wakeup()
-    {
-
-    }
-
-    /**
-     * Change current object in chain
-     * @param string $name
-     * @param array $args
-     * @return self
-     * @throws Exception
-     */
-    public function change($name, $args = [])
-    {
-        $objectData = State::get($this->currentObject);
-        $previousObjectResult = $objectData['result'];
-        $chain = self::__callStatic($name, $args);
-        State::setResult($name, $previousObjectResult);
-        return $chain;
-    }
-
-    /**
-     * Collect all trait names from object
-     * @param \ReflectionClass $reflectionObject
-     * @return array
-     */
-    private static function getTraitNamesRecursive($reflectionObject)
-    {
-        $names = [];
-        foreach ($reflectionObject->getTraits() as $trait) {
-            $names[] = $trait->name;
-            $names = array_merge($names, self::getTraitNamesRecursive($trait));
-        }
-        return $names;
-    }
-
-    /**
-     * Get object options
-     * @param string $name
-     * @param ReflectionObject $object
-     * @return array
-     */
-    private static function getObjectParams($name, $object)
-    {
-        $traits = self::getTraitNamesRecursive($object);
-
-        return [
-            'singleton' => is_array($traits) && in_array('Tommyknocker\Chain\Traits\NoSingleton', $traits, true) ? false : true,
-            'callable' => is_array($traits) && in_array('Tommyknocker\Chain\Traits\CallMethod', $traits, true)
-        ];
-    }
-
-    /**
-     * Manually put object into objects storage
-     * @param string $name Object's alias
-     * @param object $object Object
-     * @param bool $overwrite Optional Overwrite protection
-     * @throws \Exception
-     */
-    public static function insert($name, $object, $overwrite = false)
-    {
-        if (!is_string($name) || !is_object($object)) {
-            throw new Exception('Wrong params passed');
-        }
-        $objectData = State::get($name);
-        if ($objectData && !$overwrite) {
-            throw new Exception('Object is already exists while overwrite is not allowed');
-        }
-        $reflection = new ReflectionObject($object);
-        State::set($name, $object, self::getObjectParams($name, $reflection));
-    }
-
 }

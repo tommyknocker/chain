@@ -1,25 +1,35 @@
 {
   "name": "tommyknocker/chain",
-  "description": "Easy chain any object",
-  "version": "0.0.1",
-  "license": "LGPL-3.0",
-  "homepage": "https://github.com/tommyknocker/chain/",
-  "require": {
-  },
+  "description": "Chainable class for fluent, cross-object method chaining.",
+  "type": "library",
+  "license": "MIT",
   "authors": [
     {
-      "name": "Vasiliy 'Tommyknocker' Ulin",
-      "email": "me@isfrom.space",
-      "homepage": "https://github.com/tommyknocker",
-      "role": "Developer"
+      "name": "Vasiliy Krivoplyas",
+      "email": "vasiliy@krivoplyas.com"
     }
   ],
-  "autoload": {
-    "psr-4": {
-      "Tommyknocker\\Chain\\": "src"
-    }
+  "require": {
+    "php": "^8.4",
+    "psr/container": "^2.0"
   },
   "require-dev": {
-    "phpunit/phpunit": "^7.4"
+    "phpstan/phpstan": "^1.11",
+    "friendsofphp/php-cs-fixer": "^3.58",
+    "phpunit/phpunit": "^10.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "tommyknocker\\chain\\": "src"
+
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "tommyknocker\\chain\\tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "./vendor/bin/phpunit --bootstrap vendor/autoload.php tests"
   }
 }
