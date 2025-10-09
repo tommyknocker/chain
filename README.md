@@ -171,14 +171,14 @@ use tommyknocker\chain\Chain;
 
 // Assume we have a registry with "user" and "order" already set
 $chain = Chain::from(new User('Bob'))
-    ->tap(function ($u) {
+    ->tap(function ($user) {
         // Log the current user
-        echo "Current user: " . $u->getName() . PHP_EOL;
+        echo "Current user: " . $user->getName();
     })
-    ->map(fn($u) => new Profile($u->getName()))   // transform User -> Profile
-    ->tap(function ($p) {
+    ->map(fn($user) => new Profile($user->getName()))   // transform User -> Profile
+    ->tap(function ($profile) {
         // Log the profile
-        echo "Profile created: " . $p->getProfileName() . PHP_EOL;
+        echo "Profile created: " . $profile->getProfileName();
     })
     ->change('order')                             // switch to Order from registry/DI
     ->getTotal()
@@ -192,7 +192,7 @@ echo $chain->result(); // "Alice"
 
 ```php
 $chain = Chain::from(new User('Alice'))
-    ->map(fn(User $u) => new UserDTO($u->getName(), $u->getEmail()))
+    ->map(fn(User $user) => new UserDTO($user->getName(), $user->getEmail()))
     ->getEmail();
 
 echo $chain->result(); // e.g. "alice@example.com"
@@ -202,7 +202,7 @@ echo $chain->result(); // e.g. "alice@example.com"
 
 ```php
 $chain = Chain::from(new Order(199.50))
-    ->tap(fn($o) => error_log("Order total: " . $o->getTotal()))
+    ->tap(fn($order) => error_log("Order total: " . $order->getTotal()))
     ->getTotal();
 
 echo $chain->result(); // 199.50
