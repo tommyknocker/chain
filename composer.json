@@ -3,6 +3,15 @@
   "description": "Chainable class for fluent, cross-object method chaining.",
   "type": "library",
   "license": "MIT",
+  "keywords": [
+    "chain",
+    "chaining",
+    "fluent",
+    "fluent-interface",
+    "method-chaining",
+    "object-wrapper",
+    "wrapper"
+  ],
   "authors": [
     {
       "name": "Vasiliy Krivoplyas",
