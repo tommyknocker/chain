@@ -186,8 +186,9 @@ class Chain
     /**
      * Debug helper - dump current value and die
      * @param string $label Optional label for the dump
+     * @return never
      */
-    public function dd(string $label = ''): never
+    public function dd(string $label = ''): void
     {
         $this->dump($label);
         exit(1);
