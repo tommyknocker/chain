@@ -4,7 +4,6 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PHP Version](https://img.shields.io/badge/PHP-%5E8.0-777bb3.svg)](https://www.php.net/)
 [![Static Analysis](https://img.shields.io/badge/static%20analysis-phpstan-brightgreen.svg)](https://phpstan.org/)
-[![Code Style](https://img.shields.io/badge/code%20style-php_cs_fixer-green.svg)](https://github.com/PHP-CS-Fixer/PHP-CS-Fixer)
 
 Fluent method chaining & context switching utility for PHP. Call methods across objects, transform or branch chains, and conditionally execute logic in a concise style.
 
