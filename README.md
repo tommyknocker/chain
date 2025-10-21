@@ -38,16 +38,35 @@ composer require tommyknocker/chain
 - Use `get()` to read the last result (or the current instance if there is no last result)
 
 ## API Overview
+
+**Core Methods:**
 - `of(string|object $target, ...$args): Chain` - Start a chain from an object or instantiate a class
-- `change(string|object $target): Chain` - Switch to another object
+- `get(): mixed` - Get final result
+- `value(): mixed` - Alias for get(), more semantic
+- `instance(): object` - Get current wrapped object
+
+**Transformation:**
 - `tap(callable $fn): Chain` - Execute side effects
 - `map(callable $fn): Chain` - Transform to another object
+- `pipe(callable ...$pipes): Chain` - Functional pipeline
+
+**Control Flow:**
 - `when(bool|callable $cond, callable $cb, ?callable $else = null): Chain` - Conditional execution
 - `unless(bool|callable $cond, callable $cb, ?callable $else = null): Chain` - Inverse conditional
-- `pipe(callable ...$pipes): Chain` - Functional pipeline
 - `clone(): Chain` - Branch immutably
-- `get(): mixed` - Get final result
-- `instance(): object` - Get current wrapped object
+
+**Resilience:**
+- `rescue(callable $callback, callable $handler): Chain` - Handle exceptions with fallback
+- `catch(string $exceptionClass, callable $callback, callable $handler): Chain` - Catch specific exceptions
+- `retry(int $times, callable $callback, int $delayMs = 0): Chain` - Retry with backoff
+
+**Iteration & Debugging:**
+- `each(callable $fn): Chain` - Iterate over collections
+- `dump(string $label = ''): Chain` - Debug output, continues chain
+- `dd(string $label = ''): never` - Dump and die
+
+**Container Integration:**
+- `change(string|object $target): Chain` - Switch to another object (PSR-11)
 
 ## Examples
 
@@ -243,14 +262,14 @@ composer cs:check # dry-run
 
 ## Examples
 
-See the [`examples/`](examples/) directory for more working examples:
-- [`basic.php`](examples/basic.php) - Basic method chaining
-- [`conditional.php`](examples/conditional.php) - Conditional execution with when/unless
-- [`pipeline.php`](examples/pipeline.php) - Functional pipelines
+See the [`examples/`](examples/) directory for working examples:
+- [`workflow.php`](examples/workflow.php) - **Complete workflow** with User→Profile context switching
+- [`conditionals.php`](examples/conditionals.php) - Conditional execution with when/unless
 - [`branching.php`](examples/branching.php) - Clone chains for independent branches
-- [`tap.php`](examples/tap.php) - Side effects with tap
+- [`pipeline.php`](examples/pipeline.php) - Functional pipelines with pipe()
+- [`processing.php`](examples/processing.php) - Data processing with each(), dump(), value()
+- [`resilience.php`](examples/resilience.php) - Error handling with rescue(), catch(), retry()
 - [`container.php`](examples/container.php) - PSR-11 container integration
-- [`complex-workflow.php`](examples/complex-workflow.php) - Complex data processing workflow
 
 Run examples:
 ```bash

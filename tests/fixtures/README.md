@@ -163,7 +163,7 @@ $service->notifyUrgent(string $message): string
 ### Users & Entities
 
 #### [`User.php`](User.php)
-User entity with properties.
+User entity with properties, verification, premium status, and roles.
 ```php
 $user = new User(string $name, int $age);
 $user->getName(): string
@@ -173,12 +173,41 @@ $user->isAdmin(): bool
 $user->setEmail(string $email): self
 $user->getEmail(): ?string
 $user->isAdult(): bool
+$user->verify(): self
+$user->isVerified(): bool
+$user->upgradeToPremium(): self
+$user->isPremium(): bool
+$user->addRole(string $role): self
+$user->getRoles(): array
 ```
 
 **Used in:**
 - [tests/ChainNewMethodsTest.php](../ChainNewMethodsTest.php)
 - [examples/basic.php](../../examples/basic.php)
 - [examples/quick-example.php](../../examples/quick-example.php)
+- [examples/user-profile-workflow.php](../../examples/user-profile-workflow.php)
+
+#### [`Profile.php`](Profile.php)
+User profile with bio, avatar, preferences, and notifications.
+```php
+$profile = new Profile(User $user);
+$profile->getUser(): User
+$profile->setBio(string $bio): self
+$profile->getBio(): string
+$profile->setAvatar(string $url): self
+$profile->getAvatar(): string
+$profile->setPreference(string $key, mixed $value): self
+$profile->getPreference(string $key): mixed
+$profile->getPreferences(): array
+$profile->enablePremiumFeatures(): self
+$profile->addNotification(string $message): self
+$profile->getNotifications(): array
+$profile->getCompleteness(): int
+$profile->toArray(): array
+```
+
+**Used in:**
+- [examples/user-profile-workflow.php](../../examples/user-profile-workflow.php)
 
 ### Utilities
 

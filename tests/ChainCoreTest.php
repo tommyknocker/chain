@@ -9,7 +9,7 @@ use tommyknocker\chain\Chain;
 use Psr\Container\ContainerInterface;
 use tommyknocker\chain\tests\fixtures\DummyClass;
 
-final class ChainTest extends TestCase
+final class ChainCoreTest extends TestCase
 {
     public function testBasic(): void
     {

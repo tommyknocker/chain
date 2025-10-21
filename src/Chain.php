@@ -121,6 +121,14 @@ class Chain
         return $this->result ?? $this->instance;
     }
 
+    /**
+     * Alias for get() - more semantic for value extraction
+     */
+    public function value(): mixed
+    {
+        return $this->get();
+    }
+
     /** Conditional execution */
     public function when(bool|callable $condition, callable $callback, ?callable $default = null): self
     {
@@ -161,5 +169,122 @@ class Chain
         $cloned = clone $this;
         $cloned->instance = clone $this->instance;
         return $cloned;
+    }
+
+    /**
+     * Debug helper - dump current value and continue chain
+     * @param string $label Optional label for the dump
+     */
+    public function dump(string $label = ''): self
+    {
+        $value = $this->result ?? $this->instance;
+        $output = print_r($value, true);
+        echo ($label !== '' ? "[$label] " : '') . $output . "\n";
+        return $this;
+    }
+
+    /**
+     * Debug helper - dump current value and die
+     * @param string $label Optional label for the dump
+     */
+    public function dd(string $label = ''): never
+    {
+        $this->dump($label);
+        exit(1);
+    }
+
+    /**
+     * Iterate over the current value if it's iterable
+     * @param callable $fn Function to execute for each item (receives item and key)
+     */
+    public function each(callable $fn): self
+    {
+        $value = $this->result ?? $this->instance;
+        
+        if (is_array($value) || $value instanceof \Traversable) {
+            foreach ($value as $key => $item) {
+                $fn($item, $key);
+            }
+        }
+        
+        return $this;
+    }
+
+    /**
+     * Execute callback with exception handling
+     * @param callable $callback Callback to execute (receives current instance)
+     * @param callable $handler Exception handler that receives the exception and returns a fallback value
+     */
+    public function rescue(callable $callback, callable $handler): self
+    {
+        try {
+            $result = $callback($this->instance);
+            
+            if (is_object($result)) {
+                $this->instance = $result;
+            }
+            $this->result = $result;
+        } catch (\Throwable $e) {
+            $result = $handler($e);
+            
+            if (is_object($result)) {
+                $this->instance = $result;
+            }
+            $this->result = $result;
+        }
+        
+        return $this;
+    }
+
+    /**
+     * Catch specific exception types
+     * @param string $exceptionClass Exception class name
+     * @param callable $callback Callback to execute
+     * @param callable $handler Exception handler
+     */
+    public function catch(string $exceptionClass, callable $callback, callable $handler): self
+    {
+        return $this->rescue($callback, function (\Throwable $e) use ($exceptionClass, $handler) {
+            if ($e instanceof $exceptionClass) {
+                return $handler($e);
+            }
+            throw $e;
+        });
+    }
+
+    /**
+     * Execute a callback with retry logic
+     * @param int $times Number of retry attempts
+     * @param callable $callback Callback to execute with retry
+     * @param int $delayMs Delay between retries in milliseconds
+     */
+    public function retry(int $times, callable $callback, int $delayMs = 0): self
+    {
+        $lastException = null;
+        
+        for ($attempt = 1; $attempt <= $times; $attempt++) {
+            try {
+                $result = $callback($this->instance);
+                
+                if (is_object($result)) {
+                    $this->instance = $result;
+                }
+                $this->result = $result;
+                
+                return $this;
+            } catch (\Throwable $e) {
+                $lastException = $e;
+                
+                if ($attempt < $times && $delayMs > 0) {
+                    usleep($delayMs * 1000);
+                }
+            }
+        }
+        
+        if ($lastException !== null) {
+            throw $lastException;
+        }
+        
+        return $this;
     }
 }

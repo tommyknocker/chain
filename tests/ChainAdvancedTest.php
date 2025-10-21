@@ -10,7 +10,7 @@ use tommyknocker\chain\tests\fixtures\Calculator;
 use tommyknocker\chain\tests\fixtures\DummyClass;
 use tommyknocker\chain\tests\fixtures\User;
 
-final class ChainNewMethodsTest extends TestCase
+final class ChainAdvancedTest extends TestCase
 {
     // ==================== Chain::of() Tests ====================
 

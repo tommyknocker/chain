@@ -18,75 +18,65 @@ Run with coverage:
 
 Run specific test file:
 ```bash
-./vendor/bin/phpunit tests/ChainTest.php
-./vendor/bin/phpunit tests/ChainNewMethodsTest.php
+./vendor/bin/phpunit tests/ChainCoreTest.php
+./vendor/bin/phpunit tests/ChainAdvancedTest.php
+./vendor/bin/phpunit tests/ChainResilienceTest.php
 ```
 
-## Test Files
+## Test Structure
 
-### [ChainTest.php](ChainTest.php)
-Core functionality tests for the Chain class.
+### [ChainCoreTest.php](ChainCoreTest.php)
+Core functionality tests for basic Chain operations.
 
 **Tests:**
-- `testBasic()` - Basic method chaining and result retrieval
+- `testBasic()` - Basic method chaining
 - `testSwitchBetweenObjectsUsingContainer()` - Container integration with `change()`
-- `testChange()` - Switching between objects
-- `testTap()` - Side effects with `tap()`
-- `testMap()` - Object transformation with `map()`
-- `testWhen()` - Conditional execution with `when()`
-- `testUnless()` - Inverse conditional with `unless()`
-- `testPipe()` - Functional pipelines
-- `testClone()` - Immutable branching
+- `testTapExecutesCallbackWithoutChangingInstance()` - Side effects with `tap()`
+- `testMapReplacesInstance()` - Object transformation with `map()`
+- `testMapThrowsIfNotObject()` - Validation
+- `testMakeCreatesNewInstance()` - Instantiation via `of()`
+- `testMakeAndChainMethods()` - Chaining after instantiation
 
-**Fixtures used:** `DummyClass`, anonymous classes
+**Features tested:** of(), __call(), tap(), map(), change(), get(), instance()
 
-### [ChainNewMethodsTest.php](ChainNewMethodsTest.php)
-Extended tests for all Chain methods with detailed scenarios.
+### [ChainAdvancedTest.php](ChainAdvancedTest.php)
+Advanced features: conditionals, pipelines, branching.
 
-**Tests:**
-- **Chain Creation:**
-  - `testOfCreatesChainInstance()` - `Chain::of()` creates proper instance
-  - `testMakeCreatesInstanceAndChain()` - `Chain::of(ClassName::class)` instantiates class
-  
-- **Result Handling:**
-  - `testGetReturnsLastResult()` - `get()` returns last method result
-  - `testGetReturnsInstanceWhenNoResult()` - `get()` returns instance when no result
-  - `testGetAfterTapReturnsInstance()` - `tap()` doesn't affect result
-  
-- **Method Chaining:**
-  - `testCallForwardsToMagicCall()` - Magic `__call()` forwards method calls
-  - `testChainingSwitchesContext()` - Context switches on object return
-  
-- **Transformations:**
-  - `testMapTransformsInstance()` - `map()` transforms to new object
-  - `testMapThrowsOnNonObject()` - `map()` validates object return
-  
-- **Side Effects:**
-  - `testTapExecutesSideEffect()` - `tap()` executes callback
-  - `testTapDoesNotChangeInstance()` - `tap()` preserves instance
-  
-- **Conditionals:**
-  - `testWhenExecutesCallbackOnTrue()` - `when()` with truthy condition
-  - `testWhenSkipsCallbackOnFalse()` - `when()` with falsy condition
-  - `testWhenWithCallableCondition()` - `when()` with callable
-  - `testWhenWithElseCallback()` - `when()` with else branch
-  - `testUnlessExecutesCallbackOnFalse()` - `unless()` inverse logic
-  - `testUnlessSkipsCallbackOnTrue()` - `unless()` skips on true
-  
-- **Pipelines:**
-  - `testPipeExecutesSequence()` - `pipe()` chains transformations
-  - `testPipeWithMixedTypes()` - `pipe()` handles scalars and objects
-  
-- **Branching:**
-  - `testCloneCreatesSeparateChain()` - `clone()` creates independent copy
-  - `testCloneDoesNotMutateOriginal()` - `clone()` preserves original
-  
-- **Container Integration:**
-  - `testChangeWithObject()` - `change()` with object instance
-  - `testChangeWithContainerId()` - `change()` with container lookup
-  - `testChangeThrowsWhenResolverNotSet()` - Validation without resolver
+**Test Groups:**
+- **Chain::of()** - Instance creation
+- **get()/value()** - Result retrieval
+- **when()** - Conditional execution with callable and boolean conditions
+- **unless()** - Inverse conditional execution
+- **pipe()** - Functional pipelines with single and multiple functions
+- **clone()** - Immutable branching for independent modifications
 
-**Fixtures used:** `Calculator`, `DummyClass`, `User`
+**Features tested:** when(), unless(), pipe(), clone(), value()
+
+**Stats:** 25+ tests covering all advanced control flow
+
+### [ChainResilienceTest.php](ChainResilienceTest.php)
+Resilience features: error handling, retry logic, iteration, debugging.
+
+**Test Groups:**
+- **value()** - Semantic getter alias
+- **dump()** - Debug output with labels
+- **dd()** - Dump and die (documented behavior)
+- **each()** - Iteration over arrays and traversables
+- **rescue()** - General exception handling with fallback
+- **catch()** - Specific exception type handling
+- **retry()** - Automatic retry with backoff
+
+**Features tested:** value(), dump(), dd(), each(), rescue(), catch(), retry()
+
+**Stats:** 25+ tests covering resilience patterns
+
+## Test Coverage
+
+Current test metrics:
+- **60 tests** in total
+- **88 assertions**
+- **All** Chain features covered
+- Edge cases and error conditions tested
 
 ## Fixtures
 
@@ -102,23 +92,19 @@ Available fixtures:
 - [`Logger`](fixtures/Logger.php) - Logging functionality
 - [`NotificationService`](fixtures/NotificationService.php) - Notifications
 - [`Order`](fixtures/Order.php) - Order management
+- [`Profile`](fixtures/Profile.php) - User profile
 - [`Report`](fixtures/Report.php) - Report generation
 - [`SimpleContainer`](fixtures/SimpleContainer.php) - PSR-11 container
 - [`StringBuilder`](fixtures/StringBuilder.php) - String building
 - [`User`](fixtures/User.php) - User entity
 
-## Test Coverage
-
-Current test metrics:
-- **35 tests** in total
-- **52 assertions**
-- All core Chain functionality covered
-- Edge cases and error conditions tested
-
 ## Writing New Tests
 
-1. Add tests to existing test files or create new test file in `tests/`
-2. Use existing fixtures from `fixtures/` or create new ones
+1. Add tests to the appropriate test file based on feature category:
+   - **ChainCoreTest.php** - for basic operations
+   - **ChainAdvancedTest.php** - for control flow
+   - **ChainResilienceTest.php** - for error handling/resilience
+2. Use existing fixtures from `fixtures/` or create new ones if needed
 3. Follow PHPUnit naming conventions: `test*` for test methods
 4. Group related tests with comments (e.g., `// ==================== Feature Tests ====================`)
 5. Run tests to verify: `composer test`
@@ -128,5 +114,4 @@ Current test metrics:
 Tests run automatically on:
 - Pull requests
 - Commits to main branch
-- See [CI workflow](../.github/workflows/ci.yml) for details
-
+- See [CI workflow](../.github/workflows/ci.yml) (if configured)
