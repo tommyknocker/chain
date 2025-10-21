@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/tommyknocker/chain/actions/workflows/ci.yml/badge.svg)](https://github.com/tommyknocker/chain/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PHP Version](https://img.shields.io/badge/PHP-%5E8.0-777bb3.svg)](https://www.php.net/)
-[![Static Analysis](https://img.shields.io/badge/static%20analysis-phpstan-brightgreen.svg)](https://phpstan.org/)
+[![PHP Version](https://img.shields.io/badge/PHP-8.0%20|%208.1%20|%208.2%20|%208.3%20|%208.4-777bb3.svg)](https://www.php.net/)
+[![PHPStan Level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
 
 Fluent method chaining & context switching utility for PHP. Call methods across objects, transform or branch chains, and conditionally execute logic in a concise style.
 
