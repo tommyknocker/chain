@@ -42,7 +42,6 @@
     "test:coverage": "vendor/bin/phpunit --coverage-html build/coverage --coverage-clover build/coverage.xml",
     "test:ci": "vendor/bin/phpunit --coverage-clover build/coverage.xml --log-junit build/junit.xml",
     "phpstan": "vendor/bin/phpstan analyse --configuration=phpstan.neon.dist",
-    "phpstan:baseline": "vendor/bin/phpstan analyse --configuration=phpstan.neon.dist --generate-baseline build/phpstan-baseline.neon",
     "cs:fix": "vendor/bin/php-cs-fixer fix",
     "cs:check": "vendor/bin/php-cs-fixer fix --dry-run --diff",
     "quality": [
@@ -55,12 +54,6 @@
       "@test"
     ],
     "examples": "bash scripts/test-examples.sh",
-    "release": "bash scripts/release.sh",
-    "post-install-cmd": [
-      "@phpstan:baseline"
-    ],
-    "post-update-cmd": [
-      "@phpstan:baseline"
-    ]
+    "release": "bash scripts/release.sh"
   }
 }
