@@ -1,7 +1,12 @@
 {
   "name": "tommyknocker/chain",
-  "description": "Chainable class for fluent, cross-object method chaining.",
+  "description": "Professional-grade fluent method chaining library with advanced features: conditional execution, timeout protection, error handling, extension system, and PSR-11 container integration.",
   "type": "library",
+  "homepage": "https://github.com/tommyknocker/chain",
+  "support": {
+    "issues": "https://github.com/tommyknocker/chain/issues",
+    "source": "https://github.com/tommyknocker/chain"
+  },
   "license": "MIT",
   "keywords": [
     "chain",
@@ -10,7 +15,23 @@
     "fluent-interface",
     "method-chaining",
     "object-wrapper",
-    "wrapper"
+    "wrapper",
+    "pipeline",
+    "functional-programming",
+    "error-handling",
+    "timeout",
+    "conditional-execution",
+    "extension-system",
+    "configuration",
+    "monitoring",
+    "logging",
+    "psr-11",
+    "container",
+    "dependency-injection",
+    "php8",
+    "type-safe",
+    "enterprise",
+    "professional"
   ],
   "authors": [
     {
