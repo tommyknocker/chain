@@ -13,12 +13,14 @@ final class Account
     public function deposit(float $amount): self
     {
         $this->balance += $amount;
+
         return $this;
     }
 
     public function withdraw(float $amount): self
     {
         $this->balance -= $amount;
+
         return $this;
     }
 
@@ -30,13 +32,14 @@ final class Account
     public function addBonus(): self
     {
         $this->balance += 100;
+
         return $this;
     }
 
     public function applyInterest(float $rate = 0.05): self
     {
         $this->balance *= (1 + $rate);
+
         return $this;
     }
 }
-

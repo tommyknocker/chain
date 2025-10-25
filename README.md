@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/tommyknocker/chain/actions/workflows/ci.yml/badge.svg)](https://github.com/tommyknocker/chain/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PHP Version](https://img.shields.io/badge/PHP-8.0%20|%208.1%20|%208.2%20|%208.3%20|%208.4-777bb3.svg)](https://www.php.net/)
+[![PHP Version](https://img.shields.io/badge/PHP-8.0+-777bb3.svg)](https://www.php.net/)
 [![PHPStan Level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
 
 Fluent method chaining & context switching utility for PHP. Call methods across objects, transform or branch chains, and conditionally execute logic in a concise style.
@@ -50,7 +50,10 @@ composer require tommyknocker/chain
 - `map(callable $fn): Chain` - Transform to another object
 - `pipe(callable ...$pipes): Chain` - Functional pipeline
 
-**Control Flow:**
+**Enhanced Control Flow:**
+- `whenAll(callable ...$conditions): Chain` - Execute when ALL conditions are true
+- `whenAny(callable ...$conditions): Chain` - Execute when ANY condition is true  
+- `whenNone(callable ...$conditions): Chain` - Execute when NO conditions are true
 - `when(bool|callable $cond, callable $cb, ?callable $else = null): Chain` - Conditional execution
 - `unless(bool|callable $cond, callable $cb, ?callable $else = null): Chain` - Inverse conditional
 - `clone(): Chain` - Branch immutably
@@ -59,6 +62,7 @@ composer require tommyknocker/chain
 - `rescue(callable $callback, callable $handler): Chain` - Handle exceptions with fallback
 - `catch(string $exceptionClass, callable $callback, callable $handler): Chain` - Catch specific exceptions
 - `retry(int $times, callable $callback, int $delayMs = 0): Chain` - Retry with backoff
+- `timeout(int $seconds, callable $callback): Chain` - Timeout protection
 
 **Iteration & Debugging:**
 - `each(callable $fn): Chain` - Iterate over collections
@@ -67,6 +71,10 @@ composer require tommyknocker/chain
 
 **Container Integration:**
 - `change(string|object $target): Chain` - Switch to another object (PSR-11)
+
+**Configuration & Extensions:**
+- `Chain::configure(ChainConfig $config): void` - Configure Chain behavior
+- `addExtension(ChainExtensionInterface $extension): Chain` - Add extension for monitoring/logging
 
 ## Examples
 
@@ -106,7 +114,41 @@ $finalBalance = Chain::of(new Account())
 echo $finalBalance; // 550 (500 + 100 bonus - 50 fee)
 ```
 
-### Conditional Flow (when / unless)
+### Enhanced Conditional Logic
+```php
+// Multiple condition checking
+$result = Chain::of(new User('Alice', 25))
+    ->whenAll(
+        fn($u) => $u->isAdult(),
+        fn($u) => strlen($u->getName()) > 3,
+        fn($u) => $u->getAge() < 50
+    )
+    ->tap(fn($u) => $u->setEmail('alice@example.com'))
+    ->getEmail()
+    ->get();
+
+// Any condition can be true
+$result = Chain::of(new User('Bob', 16))
+    ->whenAny(
+        fn($u) => $u->isAdult(),
+        fn($u) => $u->getAge() > 15,
+        fn($u) => strlen($u->getName()) > 2
+    )
+    ->tap(fn($u) => $u->addRole('verified'))
+    ->getRoles()
+    ->get();
+
+// No conditions should be true
+$result = Chain::of(new User('Charlie', 25))
+    ->whenNone(
+        fn($u) => $u->getAge() > 30,
+        fn($u) => $u->getAge() < 18,
+        fn($u) => strlen($u->getName()) < 3
+    )
+    ->tap(fn($u) => $u->addRole('special'))
+    ->getRoles()
+    ->get();
+```
 ```php
 // Complex order processing with business rules
 $total = Chain::of(new Order(100.0))
@@ -219,7 +261,65 @@ $report = Chain::of(new DataProcessor())
 echo $report; // "Total: 702.00, Count: 3, Average: 234.00"
 ```
 
-### Container Integration
+### Timeout Protection
+```php
+// Protect against slow operations
+try {
+    $result = Chain::of(new Calculator(10))
+        ->timeout(2, function ($calc) {
+            // Simulate slow operation
+            usleep(1000000); // 1 second
+            return $calc->add(5);
+        })
+        ->getValue()
+        ->get();
+    
+    echo "Result: $result\n";
+} catch (\tommyknocker\chain\Exception\ChainTimeoutException $e) {
+    echo "Operation timed out: " . $e->getMessage() . "\n";
+}
+```
+
+### Configuration & Extensions
+```php
+// Configure Chain behavior
+Chain::configure(ChainConfig::performance());
+
+// Add monitoring extension
+class LoggingExtension implements ChainExtensionInterface
+{
+    private array $logs = [];
+
+    public function beforeMethodCall(string $method, array $args): void
+    {
+        $this->logs[] = "Before: {$method}";
+    }
+
+    public function afterMethodCall(string $method, mixed $result): void
+    {
+        $this->logs[] = "After: {$method}";
+    }
+
+    public function getLogs(): array
+    {
+        return $this->logs;
+    }
+}
+
+$logger = new LoggingExtension();
+
+$result = Chain::of(new Calculator(10))
+    ->addExtension($logger)
+    ->add(5)
+    ->multiply(2)
+    ->getValue()
+    ->get();
+
+// Check logs
+foreach ($logger->getLogs() as $log) {
+    echo "$log\n";
+}
+```
 ```php
 // PSR-11 Container integration with change()
 $container = new SimpleContainer();
@@ -244,20 +344,36 @@ echo "$result2\n";  // "Notification: Important update"
 
 ## Development
 
-### Tests
+### Installation
 ```bash
-composer test
+composer install
 ```
 
-### Static Analysis
+### Testing
 ```bash
-composer phpstan
+composer test              # Run all tests
+composer test:coverage     # Run tests with coverage report
+composer test:ci          # Run tests for CI (with JUnit output)
 ```
 
-### Code Style
+### Code Quality
 ```bash
-composer cs:fix   # fix
-composer cs:check # dry-run
+composer phpstan          # Static analysis
+composer phpstan:baseline # Generate PHPStan baseline
+composer cs:fix           # Fix code style issues
+composer cs:check         # Check code style (dry-run)
+composer quality          # Run all quality checks
+composer quality:fix      # Run quality checks and fix issues
+```
+
+### Examples
+```bash
+composer examples         # Test all examples
+```
+
+### Release Management
+```bash
+composer release          # Create new release
 ```
 
 ## Examples
@@ -270,13 +386,17 @@ See the [`examples/`](examples/) directory for working examples:
 - [`processing.php`](examples/processing.php) - Data processing with each(), dump(), value()
 - [`resilience.php`](examples/resilience.php) - Error handling with rescue(), catch(), retry()
 - [`container.php`](examples/container.php) - PSR-11 container integration
+- [`advanced-features.php`](examples/advanced-features.php) - **NEW!** All enhanced features demo
 
 Run examples:
 ```bash
-php examples/basic.php
-bash scripts/test-examples.sh  # Test all examples
+php examples/advanced-features.php  # Run specific example
+composer examples                   # Test all examples
 ```
 
 ## License
 MIT. See LICENSE file.
+
+## Changelog
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
 

@@ -4,18 +4,48 @@ declare(strict_types=1);
 
 namespace tommyknocker\chain;
 
-use BadMethodCallException;
 use InvalidArgumentException;
 use Psr\Container\ContainerExceptionInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Container\NotFoundExceptionInterface;
 use RuntimeException;
+use tommyknocker\chain\Exception\ChainException;
+use tommyknocker\chain\Exception\ChainInvalidOperationException;
+use tommyknocker\chain\Exception\ChainMethodNotFoundException;
+use tommyknocker\chain\Traits\ConditionalTrait;
+use tommyknocker\chain\Traits\DebuggingTrait;
+use tommyknocker\chain\Traits\ErrorHandlingTrait;
 
+/**
+ * Chain - Fluent method chaining utility for PHP.
+ *
+ * This class provides a fluent interface for method chaining across objects,
+ * with support for conditional execution, error handling, and functional pipelines.
+ *
+ * @example
+ * $result = Chain::of(new Calculator(10))
+ *     ->add(5)
+ *     ->when(fn($c) => $c->isPositive(), fn($chain) => $chain->multiply(2))
+ *     ->getValue()
+ *     ->get();
+ *
+ * @author Vasiliy Krivoplyas <vasiliy@krivoplyas.com>
+ * @since 1.0.0
+ */
 class Chain
 {
+    use ErrorHandlingTrait;
+    use DebuggingTrait;
+    use ConditionalTrait;
+
     protected object $instance;
     protected mixed $result = null;
     private static ?ContainerInterface $resolver = null;
+    private static ?ChainConfig $config = null;
+    /** @var array<string, bool> */
+    private static array $methodCache = [];
+    /** @var array<int, ChainExtensionInterface> */
+    private array $extensions = [];
 
     public static function setResolver(ContainerInterface $resolver): void
     {
@@ -23,7 +53,23 @@ class Chain
     }
 
     /**
-     * Switch current chained instance to a different object (by object or container id)
+     * Configure Chain behavior.
+     */
+    public static function configure(ChainConfig $config): void
+    {
+        self::$config = $config;
+    }
+
+    /**
+     * Get current configuration or default.
+     */
+    private static function getConfig(): ChainConfig
+    {
+        return self::$config ?? ChainConfig::default();
+    }
+
+    /**
+     * Switch current chained instance to a different object (by object or container id).
      * @param string|object $target
      * @return $this
      * @throws ContainerExceptionInterface
@@ -34,15 +80,17 @@ class Chain
     {
         if (is_object($target)) {
             $this->instance = $target;
+
             return $this;
         }
 
         if (self::$resolver && self::$resolver->has($target)) {
             $this->instance = self::$resolver->get($target);
+
             return $this;
         }
 
-        throw new RuntimeException("Cannot resolve target: $target");
+        throw new ChainException("Cannot resolve target: $target");
     }
 
     private function __construct(object $instance)
@@ -51,7 +99,7 @@ class Chain
     }
 
     /**
-     * Entry point: start a chain for a given object or class
+     * Entry point: start a chain for a given object or class.
      * @param string|object $target Class name to instantiate or existing object instance
      * @param mixed ...$args Constructor arguments (only used when $target is a class name)
      */
@@ -69,29 +117,60 @@ class Chain
 
     /**
      * Magic method to call methods on the wrapped instance.
-     * @param array<int, mixed> $args
+     *
+     * @param string $method The method name to call
+     * @param array<int, mixed> $args The arguments to pass to the method
+     * @throws ChainMethodNotFoundException When method does not exist
      */
     public function __call(string $method, array $args): self
     {
-        if (!method_exists($this->instance, $method)) {
-            throw new BadMethodCallException(
-                sprintf('Method %s::%s() not found.', $this->instance::class, $method)
-            );
+        $class = $this->instance::class;
+        $cacheKey = $class . '::' . $method;
+
+        // Check method existence with caching if enabled
+        if (self::getConfig()->enableMethodCaching) {
+            if (!isset(self::$methodCache[$cacheKey])) {
+                self::$methodCache[$cacheKey] = method_exists($this->instance, $method);
+            }
+
+            if (!self::$methodCache[$cacheKey]) {
+                throw new ChainMethodNotFoundException(
+                    sprintf('Method %s::%s() not found.', $class, $method)
+                );
+            }
+        } else {
+            if (!method_exists($this->instance, $method)) {
+                throw new ChainMethodNotFoundException(
+                    sprintf('Method %s::%s() not found.', $class, $method)
+                );
+            }
+        }
+
+        // Call extensions before method call
+        foreach ($this->extensions as $extension) {
+            $extension->beforeMethodCall($method, $args);
         }
 
         $result = $this->instance->{$method}(...$args);
         $this->result = $result;
+
+        // Call extensions after method call
+        foreach ($this->extensions as $extension) {
+            $extension->afterMethodCall($method, $result);
+        }
+
         if (is_object($result)) {
             $this->instance = $result; // chain can continue on returned object
         }
+
         return $this;
     }
-
 
     /** Execute a side‑effect without altering the current instance reference */
     public function tap(callable $fn): self
     {
         $fn($this->instance);
+
         return $this;
     }
 
@@ -100,10 +179,11 @@ class Chain
     {
         $mapped = $fn($this->instance);
         if (!is_object($mapped)) {
-            throw new RuntimeException('map() must return an object.');
+            throw new ChainInvalidOperationException('map() must return an object.');
         }
         $this->instance = $mapped;
         $this->result = null; // reset last scalar result
+
         return $this;
     }
 
@@ -122,7 +202,7 @@ class Chain
     }
 
     /**
-     * Alias for get() - more semantic for value extraction
+     * Alias for get() - more semantic for value extraction.
      */
     public function value(): mixed
     {
@@ -138,6 +218,7 @@ class Chain
         } elseif ($default !== null) {
             $default($this);
         }
+
         return $this;
     }
 
@@ -145,6 +226,7 @@ class Chain
     public function unless(bool|callable $condition, callable $callback, ?callable $default = null): self
     {
         $conditionResult = is_callable($condition) ? $condition($this->instance) : $condition;
+
         return $this->when(!$conditionResult, $callback, $default);
     }
 
@@ -160,6 +242,7 @@ class Chain
                 $this->instance = $result; // update context only if object
             }
         }
+
         return $this;
     }
 
@@ -168,124 +251,35 @@ class Chain
     {
         $cloned = clone $this;
         $cloned->instance = clone $this->instance;
+        $cloned->extensions = []; // Reset extensions for cloned chain
+
         return $cloned;
     }
 
     /**
-     * Debug helper - dump current value and continue chain
-     * @param string $label Optional label for the dump
+     * Add an extension to the chain.
      */
-    public function dump(string $label = ''): self
+    public function addExtension(ChainExtensionInterface $extension): self
     {
-        $value = $this->result ?? $this->instance;
-        $output = print_r($value, true);
-        echo ($label !== '' ? "[$label] " : '') . $output . "\n";
+        $this->extensions[] = $extension;
+
         return $this;
     }
 
     /**
-     * Debug helper - dump current value and die
-     * @param string $label Optional label for the dump
-     * @return never
-     */
-    public function dd(string $label = ''): void
-    {
-        $this->dump($label);
-        exit(1);
-    }
-
-    /**
-     * Iterate over the current value if it's iterable
+     * Iterate over the current value if it's iterable.
      * @param callable $fn Function to execute for each item (receives item and key)
      */
     public function each(callable $fn): self
     {
         $value = $this->result ?? $this->instance;
-        
+
         if (is_array($value) || $value instanceof \Traversable) {
             foreach ($value as $key => $item) {
                 $fn($item, $key);
             }
         }
-        
-        return $this;
-    }
 
-    /**
-     * Execute callback with exception handling
-     * @param callable $callback Callback to execute (receives current instance)
-     * @param callable $handler Exception handler that receives the exception and returns a fallback value
-     */
-    public function rescue(callable $callback, callable $handler): self
-    {
-        try {
-            $result = $callback($this->instance);
-            
-            if (is_object($result)) {
-                $this->instance = $result;
-            }
-            $this->result = $result;
-        } catch (\Throwable $e) {
-            $result = $handler($e);
-            
-            if (is_object($result)) {
-                $this->instance = $result;
-            }
-            $this->result = $result;
-        }
-        
-        return $this;
-    }
-
-    /**
-     * Catch specific exception types
-     * @param string $exceptionClass Exception class name
-     * @param callable $callback Callback to execute
-     * @param callable $handler Exception handler
-     */
-    public function catch(string $exceptionClass, callable $callback, callable $handler): self
-    {
-        return $this->rescue($callback, function (\Throwable $e) use ($exceptionClass, $handler) {
-            if ($e instanceof $exceptionClass) {
-                return $handler($e);
-            }
-            throw $e;
-        });
-    }
-
-    /**
-     * Execute a callback with retry logic
-     * @param int $times Number of retry attempts
-     * @param callable $callback Callback to execute with retry
-     * @param int $delayMs Delay between retries in milliseconds
-     */
-    public function retry(int $times, callable $callback, int $delayMs = 0): self
-    {
-        $lastException = null;
-        
-        for ($attempt = 1; $attempt <= $times; $attempt++) {
-            try {
-                $result = $callback($this->instance);
-                
-                if (is_object($result)) {
-                    $this->instance = $result;
-                }
-                $this->result = $result;
-                
-                return $this;
-            } catch (\Throwable $e) {
-                $lastException = $e;
-                
-                if ($attempt < $times && $delayMs > 0) {
-                    usleep($delayMs * 1000);
-                }
-            }
-        }
-        
-        if ($lastException !== null) {
-            throw $lastException;
-        }
-        
         return $this;
     }
 }

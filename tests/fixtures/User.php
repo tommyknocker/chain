@@ -29,6 +29,7 @@ final class User
     public function setAdmin(bool $isAdmin): self
     {
         $this->isAdmin = $isAdmin;
+
         return $this;
     }
 
@@ -40,6 +41,7 @@ final class User
     public function setEmail(string $email): self
     {
         $this->email = $email;
+
         return $this;
     }
 
@@ -56,6 +58,7 @@ final class User
     public function verify(): self
     {
         $this->isVerified = true;
+
         return $this;
     }
 
@@ -67,6 +70,7 @@ final class User
     public function upgradeToPremium(): self
     {
         $this->isPremium = true;
+
         return $this;
     }
 
@@ -80,6 +84,7 @@ final class User
         if (!in_array($role, $this->roles, true)) {
             $this->roles[] = $role;
         }
+
         return $this;
     }
 

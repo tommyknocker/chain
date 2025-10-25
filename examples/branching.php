@@ -1,5 +1,6 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
+
+require __DIR__ . '/../vendor/autoload.php';
 
 use tommyknocker\chain\Chain;
 use tommyknocker\chain\tests\fixtures\Calculator;
@@ -14,4 +15,3 @@ $memberPrice = $baseCalc->clone()->multiply(0.9)->getValue()->get();  // 90
 echo "Retail price: $retailPrice\n";
 echo "Wholesale price: $wholesalePrice\n";
 echo "Member price: $memberPrice\n";
-

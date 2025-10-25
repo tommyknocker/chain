@@ -11,6 +11,7 @@ final class Logger
     public function log(string $message): self
     {
         $this->logs[] = $message;
+
         return $this;
     }
 
@@ -22,6 +23,7 @@ final class Logger
     public function clear(): self
     {
         $this->logs = [];
+
         return $this;
     }
 
@@ -30,4 +32,3 @@ final class Logger
         return count($this->logs);
     }
 }
-

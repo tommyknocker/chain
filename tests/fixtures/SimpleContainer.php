@@ -20,6 +20,7 @@ final class SimpleContainer implements ContainerInterface
         if (!$this->has($id)) {
             throw new \RuntimeException("Service $id not found");
         }
+
         return $this->services[$id];
     }
 
@@ -28,4 +29,3 @@ final class SimpleContainer implements ContainerInterface
         return isset($this->services[$id]);
     }
 }
-

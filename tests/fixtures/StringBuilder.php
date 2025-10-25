@@ -16,24 +16,28 @@ final class StringBuilder
     public function append(string $str): self
     {
         $this->text .= $str;
+
         return $this;
     }
 
     public function prepend(string $str): self
     {
         $this->text = $str . $this->text;
+
         return $this;
     }
 
     public function uppercase(): self
     {
         $this->text = strtoupper($this->text);
+
         return $this;
     }
 
     public function lowercase(): self
     {
         $this->text = strtolower($this->text);
+
         return $this;
     }
 
@@ -42,4 +46,3 @@ final class StringBuilder
         return $this->text;
     }
 }
-

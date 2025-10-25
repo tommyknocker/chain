@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace tommyknocker\chain\tests;
 
 use PHPUnit\Framework\TestCase;
-use tommyknocker\chain\Chain;
 use Psr\Container\ContainerInterface;
+use tommyknocker\chain\Chain;
+use tommyknocker\chain\Exception\ChainInvalidOperationException;
 use tommyknocker\chain\tests\fixtures\DummyClass;
 
 final class ChainCoreTest extends TestCase
@@ -26,41 +27,56 @@ final class ChainCoreTest extends TestCase
 
     public function testSwitchBetweenObjectsUsingContainer(): void
     {
-        $userAlice = new class('Alice') {
+        $userAlice = new class ('Alice') {
             public function __construct(private string $name)
             {
             }
+
             public function getName(): string
             {
                 return $this->name;
             }
         };
 
-        $userBob = new class('Bob') {
+        $userBob = new class ('Bob') {
             public function __construct(private string $name)
             {
             }
+
             public function getName(): string
             {
                 return $this->name;
             }
         };
 
-        $order = new class(99.95) {
+        $order = new class (99.95) {
             public function __construct(private float $total)
             {
             }
+
             public function getTotal(): float
             {
                 return $this->total;
             }
         };
 
-        $container = new class($userAlice, $order) implements ContainerInterface {
+        $container = new class ($userAlice, $order) implements ContainerInterface {
             /** @param object $userAlice @param object $order */
-            public function __construct(private object $userAlice, private object $order) {}
-            public function get(string $id): object { return match($id) { 'user' => $this->userAlice, 'order' => $this->order, default => throw new \RuntimeException('not found') }; }
-            public function has(string $id): bool { return in_array($id, ['user','order'], true); }
+            public function __construct(private object $userAlice, private object $order)
+            {
+            }
+
+            public function get(string $id): object
+            {
+                return match ($id) {
+                    'user' => $this->userAlice, 'order' => $this->order, default => throw new \RuntimeException('not found')
+                };
+            }
+
+            public function has(string $id): bool
+            {
+                return in_array($id, ['user', 'order'], true);
+            }
         };
         Chain::setResolver($container);
 
@@ -81,6 +97,7 @@ final class ChainCoreTest extends TestCase
             public function __construct(private string $name)
             {
             }
+
             public function getName(): string
             {
                 return $this->name;
@@ -107,6 +124,7 @@ final class ChainCoreTest extends TestCase
             public function __construct(private string $name)
             {
             }
+
             public function getName(): string
             {
                 return $this->name;
@@ -117,6 +135,7 @@ final class ChainCoreTest extends TestCase
             public function __construct(private string $profileName)
             {
             }
+
             public function getProfileName(): string
             {
                 return $this->profileName;
@@ -137,13 +156,14 @@ final class ChainCoreTest extends TestCase
             public function __construct(private string $name)
             {
             }
+
             public function getName(): string
             {
                 return $this->name;
             }
         };
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(ChainInvalidOperationException::class);
         $this->expectExceptionMessage('map() must return an object.');
 
         Chain::of($user)->map(fn ($u) => 'not-an-object');

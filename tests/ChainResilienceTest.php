@@ -55,7 +55,7 @@ final class ChainResilienceTest extends TestCase
         $output = ob_get_clean();
 
         $this->assertSame(15.0, $result);
-        $this->assertStringContainsString('15', (string)$output);
+        $this->assertStringContainsString('15', (string) $output);
     }
 
     public function testDumpWithLabel(): void
@@ -68,8 +68,8 @@ final class ChainResilienceTest extends TestCase
             ->dump('Test Label');
         $output = ob_get_clean();
 
-        $this->assertStringContainsString('[Test Label]', (string)$output);
-        $this->assertStringContainsString('10', (string)$output);
+        $this->assertStringContainsString('[Test Label]', (string) $output);
+        $this->assertStringContainsString('10', (string) $output);
     }
 
     public function testDumpReturnsChainForFurtherChaining(): void
@@ -107,8 +107,8 @@ final class ChainResilienceTest extends TestCase
         $items = ['a', 'b', 'c'];
         $collected = [];
 
-        Chain::of((object)['data' => $items])
-            ->pipe(fn($obj) => $obj->data)
+        Chain::of((object) ['data' => $items])
+            ->pipe(fn ($obj) => $obj->data)
             ->each(function ($item) use (&$collected) {
                 $collected[] = $item;
             })
@@ -123,8 +123,8 @@ final class ChainResilienceTest extends TestCase
         $keys = [];
         $values = [];
 
-        Chain::of((object)['data' => $items])
-            ->pipe(fn($obj) => $obj->data)
+        Chain::of((object) ['data' => $items])
+            ->pipe(fn ($obj) => $obj->data)
             ->each(function ($value, $key) use (&$keys, &$values) {
                 $keys[] = $key;
                 $values[] = $value;
@@ -139,12 +139,12 @@ final class ChainResilienceTest extends TestCase
         $items = [1, 2, 3];
         $sum = 0;
 
-        $result = Chain::of((object)['data' => $items])
-            ->pipe(fn($obj) => $obj->data)
+        $result = Chain::of((object) ['data' => $items])
+            ->pipe(fn ($obj) => $obj->data)
             ->each(function ($item) use (&$sum) {
                 $sum += $item;
             })
-            ->pipe(fn($arr) => ['sum' => $sum, 'items' => $arr])
+            ->pipe(fn ($arr) => ['sum' => $sum, 'items' => $arr])
             ->value();
 
         $this->assertSame(6, $sum);
@@ -173,8 +173,8 @@ final class ChainResilienceTest extends TestCase
 
         $result = Chain::of($calc)
             ->rescue(
-                fn($c) => $c->divide(0), // throws exception
-                fn($e) => -1.0
+                fn ($c) => $c->divide(0), // throws exception
+                fn ($e) => -1.0
             )
             ->value();
 
@@ -187,8 +187,8 @@ final class ChainResilienceTest extends TestCase
 
         $result = Chain::of($calc)
             ->rescue(
-                fn($c) => $c->add(5),
-                fn($e) => -1.0
+                fn ($c) => $c->add(5),
+                fn ($e) => -1.0
             )
             ->getValue()
             ->value();
@@ -203,8 +203,8 @@ final class ChainResilienceTest extends TestCase
 
         $result = Chain::of($calc)
             ->rescue(
-                fn($c) => $c->divide(0),
-                fn($e) => $fallback
+                fn ($c) => $c->divide(0),
+                fn ($e) => $fallback
             )
             ->getValue()
             ->value();
@@ -218,8 +218,8 @@ final class ChainResilienceTest extends TestCase
 
         $result = Chain::of($calc)
             ->rescue(
-                fn($c) => $c->divide(0),
-                fn($e) => new Calculator(5)
+                fn ($c) => $c->divide(0),
+                fn ($e) => new Calculator(5)
             )
             ->add(10)
             ->getValue()
@@ -237,8 +237,8 @@ final class ChainResilienceTest extends TestCase
         $result = Chain::of($calc)
             ->catch(
                 \InvalidArgumentException::class,
-                fn($c) => $c->divide(0),
-                fn($e) => -1.0
+                fn ($c) => $c->divide(0),
+                fn ($e) => -1.0
             )
             ->value();
 
@@ -257,7 +257,7 @@ final class ChainResilienceTest extends TestCase
                 function ($c) {
                     throw new \RuntimeException('Different exception'); // But this is thrown
                 },
-                fn($e) => -1.0
+                fn ($e) => -1.0
             )
             ->value();
     }
@@ -269,8 +269,8 @@ final class ChainResilienceTest extends TestCase
         $result = Chain::of($calc)
             ->catch(
                 \InvalidArgumentException::class,
-                fn($c) => $c->add(5),
-                fn($e) => -1.0
+                fn ($c) => $c->add(5),
+                fn ($e) => -1.0
             )
             ->getValue()
             ->value();
@@ -285,7 +285,7 @@ final class ChainResilienceTest extends TestCase
         $calc = new Calculator(10);
 
         $result = Chain::of($calc)
-            ->retry(3, fn($c) => $c->add(5))
+            ->retry(3, fn ($c) => $c->add(5))
             ->getValue()
             ->value();
 
@@ -303,6 +303,7 @@ final class ChainResilienceTest extends TestCase
                 if ($attempts < 2) {
                     throw new \RuntimeException('Fail');
                 }
+
                 return $c->add(5);
             })
             ->getValue()
@@ -323,6 +324,7 @@ final class ChainResilienceTest extends TestCase
         Chain::of($calc)
             ->retry(3, function ($c) use (&$attempts) {
                 $attempts++;
+
                 throw new \RuntimeException('Always fails');
             })
             ->value();
@@ -338,6 +340,7 @@ final class ChainResilienceTest extends TestCase
             Chain::of($calc)
                 ->retry(3, function ($c) use (&$attempts) {
                     $attempts++;
+
                     throw new \RuntimeException('Fail');
                 }, 10) // 10ms delay
                 ->value();
@@ -356,7 +359,7 @@ final class ChainResilienceTest extends TestCase
         $calc = new Calculator(10);
 
         $result = Chain::of($calc)
-            ->retry(2, fn($c) => $c->add(5))
+            ->retry(2, fn ($c) => $c->add(5))
             ->getValue()
             ->value();
 
@@ -374,12 +377,12 @@ final class ChainResilienceTest extends TestCase
         $result = Chain::of($calc)
             ->add(5)
             ->dump('After add')
-            ->retry(2, fn($c) => $c->multiply(2))
+            ->retry(2, fn ($c) => $c->multiply(2))
             ->rescue(
-                fn($c) => $c->divide(0),
-                fn($e) => new Calculator(100)
+                fn ($c) => $c->divide(0),
+                fn ($e) => new Calculator(100)
             )
-            ->pipe(fn($c) => [$c->getValue()])
+            ->pipe(fn ($c) => [$c->getValue()])
             ->each(function ($val) use (&$log) {
                 $log[] = $val;
             })
@@ -401,4 +404,3 @@ final class ChainResilienceTest extends TestCase
         $this->assertSame($viaGet, $viaValue);
     }
 }
-

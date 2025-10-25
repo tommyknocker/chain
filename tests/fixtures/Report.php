@@ -15,7 +15,8 @@ final class Report
     public function format(): string
     {
         $avg = $this->count > 0 ? $this->total / $this->count : 0;
-        return sprintf("Total: %.2f, Count: %d, Average: %.2f", $this->total, $this->count, $avg);
+
+        return sprintf('Total: %.2f, Count: %d, Average: %.2f', $this->total, $this->count, $avg);
     }
 
     public function getTotal(): float
@@ -33,4 +34,3 @@ final class Report
         return $this->count > 0 ? $this->total / $this->count : 0;
     }
 }
-

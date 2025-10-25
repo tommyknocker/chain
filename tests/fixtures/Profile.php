@@ -17,7 +17,7 @@ final class Profile
         $this->preferences = [
             'theme' => 'light',
             'language' => 'en',
-            'newsletter' => false
+            'newsletter' => false,
         ];
         $this->calculateCompleteness();
     }
@@ -31,6 +31,7 @@ final class Profile
     {
         $this->bio = $bio;
         $this->calculateCompleteness();
+
         return $this;
     }
 
@@ -43,6 +44,7 @@ final class Profile
     {
         $this->avatarUrl = $url;
         $this->calculateCompleteness();
+
         return $this;
     }
 
@@ -54,6 +56,7 @@ final class Profile
     public function setPreference(string $key, mixed $value): self
     {
         $this->preferences[$key] = $value;
+
         return $this;
     }
 
@@ -72,6 +75,7 @@ final class Profile
         $this->setPreference('theme', 'premium-dark');
         $this->setPreference('storage_limit', '100GB');
         $this->setPreference('priority_support', true);
+
         return $this;
     }
 
@@ -79,8 +83,9 @@ final class Profile
     {
         $this->notifications[] = [
             'message' => $message,
-            'timestamp' => date('Y-m-d H:i:s')
+            'timestamp' => date('Y-m-d H:i:s'),
         ];
+
         return $this;
     }
 
@@ -96,7 +101,7 @@ final class Profile
 
     private function calculateCompleteness(): void
     {
-        $score = 20; // базовый
+        $score = 20; // base score
         if ($this->user->getEmail()) {
             $score += 20;
         }
@@ -109,7 +114,7 @@ final class Profile
         if ($this->user->isVerified()) {
             $score += 20;
         }
-        
+
         $this->completeness = min($score, 100);
     }
 
@@ -129,9 +134,8 @@ final class Profile
                 'avatar' => $this->avatarUrl,
                 'preferences' => $this->preferences,
                 'completeness' => $this->completeness . '%',
-                'notifications' => count($this->notifications) . ' unread'
-            ]
+                'notifications' => count($this->notifications) . ' unread',
+            ],
         ];
     }
 }
-

@@ -13,18 +13,21 @@ final class DataProcessor
     public function addItem(mixed $item): self
     {
         $this->data[] = $item;
+
         return $this;
     }
 
     public function filter(callable $fn): self
     {
         $this->data = array_filter($this->data, $fn);
+
         return $this;
     }
 
     public function transform(callable $fn): self
     {
         $this->data = array_map($fn, $this->data);
+
         return $this;
     }
 
@@ -43,4 +46,3 @@ final class DataProcessor
         return count($this->data);
     }
 }
-

@@ -47,10 +47,11 @@ Error handling and resilience patterns.
 - **Features**: rescue(), catch(), retry()
 - **Use Case**: API calls with automatic retries and fallback handling
 
-### [container.php](container.php)
-PSR-11 container integration for service switching.
-- **Features**: change(), setResolver()
-- **Use Case**: Switching between email and notification services
+### [advanced-features.php](advanced-features.php)
+**NEW!** Comprehensive demo of all enhanced features.
+- **Features**: All new methods - whenAll(), whenAny(), whenNone(), timeout(), ChainConfig, ChainExtensionInterface
+- **Use Case**: Complete demonstration of configuration, extensions, enhanced conditionals, timeout protection
+- **Demonstrates**: Advanced integration scenarios with monitoring and performance optimization
 
 ## Fixtures
 
@@ -89,15 +90,24 @@ All Chain methods are demonstrated across examples:
 - `map()` - workflow.php
 - `pipe()` - workflow.php, pipeline.php, processing.php
 
-**Control Flow:**
+**Enhanced Control Flow:**
+- `whenAll()` - advanced-features.php
+- `whenAny()` - advanced-features.php
+- `whenNone()` - advanced-features.php
 - `when()` - workflow.php, conditionals.php
 - `unless()` - workflow.php, conditionals.php
 - `clone()` - workflow.php, branching.php
 
-**Resilience:**
+**Enhanced Resilience:**
+- `timeout()` - advanced-features.php
 - `rescue()` - resilience.php
 - `catch()` - resilience.php
 - `retry()` - resilience.php
+
+**Configuration & Extensions:**
+- `ChainConfig` - advanced-features.php
+- `ChainExtensionInterface` - advanced-features.php
+- `addExtension()` - advanced-features.php
 
 **Iteration & Debug:**
 - `each()` - processing.php

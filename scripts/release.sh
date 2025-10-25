@@ -1,6 +1,13 @@
 #!/bin/bash
 set -e
 
+# Colors
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
 # Parse arguments
 COMMAND=$1
 VERSION=$2
@@ -66,7 +73,7 @@ if [ "$ACTION" == "delete" ]; then
     echo "========================================="
     echo ""
     echo "📦 Don't forget to manually delete the GitHub Release at:"
-    echo "   https://github.com/tommyknocker/pdo-database-class/releases"
+    echo "   https://github.com/tommyknocker/chain/releases"
     echo ""
     exit 0
 fi
@@ -76,7 +83,7 @@ fi
 # ========================================
 
 echo "========================================="
-echo "📋 Preparing release ${TAG}..."
+echo "📋 Preparing Chain Library release ${TAG}..."
 echo "========================================="
 echo ""
 
@@ -117,20 +124,20 @@ fi
 echo "✅ No Russian characters found in PHP files"
 echo ""
 
-# Run all tests (including all dialects)
-echo "🧪 Running all tests (MySQL, PostgreSQL, SQLite)..."
-ALL_TESTS=1 ./vendor/bin/phpunit
+# Run quality checks
+echo "🔍 Running quality checks..."
+composer quality
 
 if [ $? -ne 0 ]; then
-    echo "❌ Tests failed. Fix them before releasing."
+    echo "❌ Quality checks failed. Fix them before releasing."
     exit 1
 fi
-echo "✅ All tests passed!"
+echo "✅ All quality checks passed!"
 
 # Verify all examples work
 echo ""
 echo "📝 Verifying all examples..."
-./scripts/test-examples.sh
+composer examples
 
 if [ $? -ne 0 ]; then
     echo "❌ Some examples failed. Fix them before releasing."
@@ -168,7 +175,7 @@ echo "✅ Release ${TAG} created successfully!"
 echo "========================================="
 echo ""
 echo "📦 Next steps:"
-echo "   1. Go to: https://github.com/tommyknocker/pdo-database-class/releases/new?tag=${TAG}"
+echo "   1. Go to: https://github.com/tommyknocker/chain/releases/new?tag=${TAG}"
 echo "   2. Set title: 'v${VERSION}'"
 echo "   3. Paste the release notes from CHANGELOG.md"
 echo "   4. Publish release"

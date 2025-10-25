@@ -1,5 +1,6 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
+
+require __DIR__ . '/../vendor/autoload.php';
 
 use tommyknocker\chain\Chain;
 use tommyknocker\chain\tests\fixtures\Calculator;
@@ -8,9 +9,9 @@ use tommyknocker\chain\tests\fixtures\Calculator;
 $result = Chain::of(new Calculator())
     ->add(10)
     ->pipe(
-        fn($c) => $c->multiply(2),
-        fn($c) => $c->getValue(),
-        fn($v) => $v + 5
+        fn ($c) => $c->multiply(2),
+        fn ($c) => $c->getValue(),
+        fn ($v) => $v + 5
     )
     ->get();
 

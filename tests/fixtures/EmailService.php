@@ -13,7 +13,6 @@ final class EmailService
 
     public function sendBulk(array $recipients): string
     {
-        return "Bulk email sent to " . count($recipients) . " recipients";
+        return 'Bulk email sent to ' . count($recipients) . ' recipients';
     }
 }
-

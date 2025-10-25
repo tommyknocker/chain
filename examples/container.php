@@ -1,10 +1,11 @@
 <?php
-require __DIR__.'/../vendor/autoload.php';
+
+require __DIR__ . '/../vendor/autoload.php';
 
 use tommyknocker\chain\Chain;
-use tommyknocker\chain\tests\fixtures\SimpleContainer;
 use tommyknocker\chain\tests\fixtures\EmailService;
 use tommyknocker\chain\tests\fixtures\NotificationService;
+use tommyknocker\chain\tests\fixtures\SimpleContainer;
 
 // Setup container
 $container = new SimpleContainer();
@@ -26,4 +27,3 @@ $result2 = Chain::of($container->get('email'))
 
 echo "$result1\n";
 echo "$result2\n";
-

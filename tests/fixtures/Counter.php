@@ -13,12 +13,14 @@ final class Counter
     public function inc(int $n = 1): self
     {
         $this->value += $n;
+
         return $this;
     }
 
     public function dec(int $n = 1): self
     {
         $this->value -= $n;
+
         return $this;
     }
 
@@ -30,7 +32,7 @@ final class Counter
     public function reset(): self
     {
         $this->value = 0;
+
         return $this;
     }
 }
-
