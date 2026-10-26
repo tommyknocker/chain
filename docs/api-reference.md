@@ -54,11 +54,14 @@ Condition callbacks receive the current object. Action callbacks receive the `Ch
 | `rescue(callable $callback, callable $handler)` | Runs the callback with the current object; the handler receives any thrown `Throwable`. Both results become the current value. |
 | `catch(string $exceptionClass, callable $callback, callable $handler)` | `rescue()` limited to one exception type. Other exceptions propagate. |
 | `retry(?int $times, callable $callback, ?int $delayMs)` | Retries a callback after failures. `null` uses this chain's configuration. |
+| `retryWith(RetryPolicy $policy, callable $callback)` | Retries with a predicate, capped exponential backoff, optional jitter, and `RetryAttempt` metadata. |
 | `timeout(?int $seconds, callable $callback)` | Interrupts a callback with `ChainTimeoutException` through PCNTL. Requires `ext-pcntl`. |
 | `dump(string $label = '')` | Prints the current value and continues. |
 | `dd(string $label = '')` | Prints the current value and terminates the process. |
 
 `retry()` may repeat side effects. Pass an idempotent callback or provide its own deduplication.
+
+`retryWith()` calls its callback with the current object and a `RetryAttempt`. Use `withSleeper()` to substitute the delay mechanism for tests.
 
 `timeout()` deliberately rejects nested calls. PCNTL exposes one process-wide alarm, so nesting cannot preserve both deadlines safely.
 

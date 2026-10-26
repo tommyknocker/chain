@@ -46,6 +46,7 @@ class Chain
     private static bool $timeoutActive = false;
     private ?ContainerInterface $resolver;
     private ChainConfig $config;
+    private SleeperInterface $sleeper;
     /** @var array<string, bool> */
     private static array $methodCache = [];
     /** @var array<int, ChainExtensionInterface> */
@@ -81,6 +82,13 @@ class Chain
         return $this;
     }
 
+    public function withSleeper(SleeperInterface $sleeper): self
+    {
+        $this->sleeper = $sleeper;
+
+        return $this;
+    }
+
     /**
      * Switch current chained instance to a different object (by object or container id).
      * @param string|object $target
@@ -111,6 +119,7 @@ class Chain
         $this->instance = $instance;
         $this->config = $config;
         $this->resolver = $resolver;
+        $this->sleeper = new NativeSleeper();
     }
 
     /**

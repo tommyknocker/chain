@@ -63,32 +63,39 @@ trait ErrorHandlingTrait
         $times ??= $config->maxRetryAttempts;
         $delayMs ??= $config->defaultRetryDelay;
 
-        if ($times < 1) {
-            throw new \InvalidArgumentException('retry() requires at least one attempt.');
-        }
-        if ($delayMs < 0) {
-            throw new \InvalidArgumentException('retry() delay must be zero or greater.');
-        }
+        return $this->retryWith(new \tommyknocker\chain\RetryPolicy($times, $delayMs), $callback);
+    }
 
-        $lastException = new \LogicException('retry() did not run.');
+    /**
+     * Retry with a policy, attempt metadata, and an optional error predicate.
+     */
+    public function retryWith(\tommyknocker\chain\RetryPolicy $policy, callable $callback): self
+    {
+        $previousError = null;
 
-        for ($attempt = 1; $attempt <= $times; $attempt++) {
+        for ($number = 1; $number <= $policy->maxAttempts; $number++) {
+            $attempt = new \tommyknocker\chain\RetryAttempt($number, $policy->maxAttempts, $previousError);
+
             try {
-                $result = $callback($this->instance);
+                $result = $callback($this->instance, $attempt);
 
                 $this->setResult($result);
 
                 return $this;
             } catch (\Throwable $e) {
-                $lastException = $e;
-
-                if ($attempt < $times && $delayMs > 0) {
-                    usleep($delayMs * 1000);
+                if ($number === $policy->maxAttempts || !$policy->shouldRetry($e, $attempt)) {
+                    throw $e;
                 }
+
+                $delayMs = $policy->delayAfter($number);
+                if ($delayMs > 0) {
+                    $this->sleeper->sleep($delayMs);
+                }
+                $previousError = $e;
             }
         }
 
-        throw $lastException;
+        throw new \LogicException('Retry policy did not run.');
     }
 
     /**

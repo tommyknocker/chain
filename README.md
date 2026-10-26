@@ -70,6 +70,7 @@ composer require tommyknocker/chain
 - `rescue(callable $callback, callable $handler): Chain` - Handle exceptions with fallback
 - `catch(string $exceptionClass, callable $callback, callable $handler): Chain` - Catch specific exceptions
 - `retry(int $times, callable $callback, int $delayMs = 0): Chain` - Retry with backoff
+- `retryWith(RetryPolicy $policy, callable $callback): Chain` - Retry with predicate, backoff, jitter, and attempt metadata
 - `timeout(?int $seconds, callable $callback): Chain` - Timeout protection; requires `ext-pcntl`
 
 **Iteration & Debugging:**
