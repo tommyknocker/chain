@@ -16,6 +16,9 @@ At creation both point to the wrapped object. A value is always present after th
 | `pipe()` returns scalar / `null` | Unchanged | Pipe result |
 | `pipe()` returns object | Pipe object result | Pipe object result |
 | `tap()` / `each()` / `dump()` | Unchanged | Unchanged |
+| `inspect()` | Unchanged | Unchanged |
+| `filter()` / `flatMap()` | Unchanged | Resulting array |
+| `recover()` | Updated if result is object | Callback or fallback result |
 
 This means separate `pipe()` calls compose through the last value:
 

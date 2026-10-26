@@ -5,7 +5,7 @@
 [![PHP Version](https://img.shields.io/badge/PHP-8.5+-777bb3.svg)](https://www.php.net/)
 [![PHPStan Level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
 
-Fluent method chaining & context switching utility for PHP. Call methods across objects, transform or branch chains, and conditionally execute logic in a concise style.
+Fluent method chaining & context switching utility for PHP. Call methods across objects, transform or branch chains, and conditionally execute logic in a concise style. The package also includes `Batch`, a small bounded-concurrency cURL utility for fetching or downloading many independent URLs.
 
 ## Quick Example
 ```php
@@ -44,6 +44,33 @@ composer require tommyknocker/chain
 - [API reference](docs/api-reference.md)
 - [State model](docs/state-model.md)
 - [Compatibility policy](docs/compatibility.md)
+- [Batch HTTP utility](docs/batch.md)
+
+## Fetch or download many URLs
+
+`Batch` is independent from `Chain` and uses cURL multi handles to run a bounded
+number of HTTP requests concurrently.
+
+```php
+use tommyknocker\chain\Batch;
+
+$texts = Batch::fetch($urls)
+    ->concurrency(12)
+    ->run()
+    ->throwIfFailed()
+    ->bodies();
+
+$files = Batch::download($imageUrls)
+    ->toDirectory('/var/app/images')
+    ->run()
+    ->throwIfFailed()
+    ->downloads();
+```
+
+Input keys are preserved, so an `id => url` array gives an `id => body` array
+for `fetch()` and lets you query `download($id)` for `download()`. See the
+[Batch HTTP utility](docs/batch.md) for file naming, partial failures, and
+memory limits.
 
 ## API Overview
 
@@ -57,6 +84,10 @@ composer require tommyknocker/chain
 - `tap(callable $fn): Chain` - Execute side effects
 - `map(callable $fn): Chain` - Transform to another object
 - `pipe(callable ...$pipes): Chain` - Functional pipeline
+- `inspect(callable $fn): Chain` - Observe current value without changing state
+- `filter(callable $predicate): Chain` - Filter an iterable current value
+- `flatMap(callable $mapper): Chain` - Map and flatten an iterable current value
+- `recover(callable $callback, callable $handler): Chain` - Recover a value transformation
 
 **Enhanced Control Flow:**
 - `whenAll(array $conditions, callable $callback, ?callable $else = null): Chain` - Execute when ALL conditions are true
@@ -266,7 +297,7 @@ $report = Chain::of(new DataProcessor())
     ->addItem(75)
     ->addItem(300)
     ->tap(fn($p) => logger()->info("Processing " . $p->count() . " items"))
-    ->filter(fn($x) => $x >= 100)  // Only items >= 100
+    ->invoke('filter', fn($x) => $x >= 100)  // Call DataProcessor::filter()
     ->transform(fn($x) => $x * 1.08)  // Add 8% markup
     ->pipe(
         fn($p) => ['total' => $p->sum(), 'count' => $p->count()],

@@ -15,6 +15,7 @@ use tommyknocker\chain\Exception\ChainMethodNotFoundException;
 use tommyknocker\chain\Traits\ConditionalTrait;
 use tommyknocker\chain\Traits\DebuggingTrait;
 use tommyknocker\chain\Traits\ErrorHandlingTrait;
+use tommyknocker\chain\Traits\ValueTrait;
 
 /**
  * Chain - Fluent method chaining utility for PHP.
@@ -37,6 +38,7 @@ class Chain
     use ErrorHandlingTrait;
     use DebuggingTrait;
     use ConditionalTrait;
+    use ValueTrait;
 
     protected object $instance;
     protected mixed $result = null;

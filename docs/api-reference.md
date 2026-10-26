@@ -31,6 +31,10 @@ $context = Chain::of($user)->requireInstance(User::class); // inferred as User
 | `map(callable $callback)` | Passes the current value to the callback. The callback must return an object; it becomes object and value. |
 | `pipe(callable ...$pipes)` | Passes the current value through every pipe. If a pipe returns an object, it also becomes the method receiver. |
 | `each(callable $callback)` | Calls the callback for every item when the current value is array or `Traversable`. |
+| `inspect(callable $callback)` | Calls the callback with the current value and does not change state. |
+| `filter(callable $predicate)` | Filters the current iterable value into an array and preserves keys. |
+| `flatMap(callable $mapper)` | Maps every current iterable item to an iterable and flattens it into an array. |
+| `recover(callable $callback, callable $handler)` | Runs a value callback; the handler result replaces an error. |
 | `clone()` | Creates a branch. The clone mode comes from `ChainConfig`. |
 
 See [State model](state-model.md) for transition rules and nullable values.
@@ -87,3 +91,25 @@ Extensions receive `beforeMethodCall()` in registration order, then the wrapped 
 | `ChainMethodNotFoundException` | A wrapped method is not callable. |
 | `ChainInvalidOperationException` | An invalid chain operation occurs, such as `map()` returning a scalar. |
 | `ChainTimeoutException` | `timeout()` reaches its deadline. |
+
+## Batch HTTP utility
+
+`Batch` is separate from the mutable `Chain` state model. It runs independent
+HTTP(S) URLs through `ext-curl` with bounded concurrency and returns a `Report`.
+
+| Entry point | Contract |
+| --- | --- |
+| `Batch::fetch(iterable $urls)` | Buffers successful 2xx response bodies in memory. Input keys are retained. |
+| `Batch::download(iterable $urls)` | Streams successful 2xx responses to files. Call `toDirectory()` before `run()`. |
+| `concurrency(int $limit)` | Caps active cURL transfers; default is 8. |
+| `timeout(float $seconds)` | Sets a per-transfer total timeout; default is 30 seconds. |
+| `connectTimeout(float $seconds)` | Sets a per-transfer connection timeout; default is 10 seconds. |
+| `acceptStatuses(int ...$statuses)` | Replaces the default accepted 2xx statuses. |
+| `FetchBatch::maxBodySize(int $bytes)` | Sets the per-response memory limit; default is 16 MiB. |
+| `DownloadBatch::toDirectory(string $directory)` | Sets and creates the destination directory. |
+| `DownloadBatch::fileNamesFromKeys()` | Uses `id => url` keys as file names. |
+| `DownloadBatch::fileNameUsing(callable $resolver)` | Builds a file name from the input key and URL. |
+| `DownloadBatch::overwrite()` | Explicitly permits replacement of an existing destination file. |
+| `Report::bodies()` | Returns successful buffered bodies keyed like the input. |
+| `Report::downloads()` / `failures()` | Returns keyed successful downloads or keyed per-job failures. |
+| `Report::throwIfFailed()` | Throws `BatchFailedException`, retaining its report, when any job failed. |

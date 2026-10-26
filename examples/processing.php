@@ -70,7 +70,7 @@ $finalReport = Chain::of(new DataProcessor())
     ->addItem(250)
     ->addItem(75)
     ->addItem(300)
-    ->filter(fn ($x) => $x >= 100)
+    ->invoke('filter', fn ($x) => $x >= 100)
     ->transform(fn ($x) => $x * 1.08)
     ->tap(fn ($p) => print('Items processed: ' . $p->count() . "\n"))
     ->pipe(
