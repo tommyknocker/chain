@@ -5,475 +5,150 @@
 [![PHP Version](https://img.shields.io/badge/PHP-8.5+-777bb3.svg)](https://www.php.net/)
 [![PHPStan Level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
 
-Three focused PHP 8.5 utilities in one package:
-
-- **Chain** — fluent object workflows, branching, value transformations, and resilience primitives.
-- **Batch** — bounded concurrent HTTP fetches and downloads through `ext-curl`.
-- **Flow** — immutable reusable plans of named application steps.
-
-Use `Chain` when one value or object moves through a fluent workflow. Use `Flow` when named application steps form a reusable plan. Use `Batch` when many independent URLs must be fetched or downloaded concurrently. The utilities are independent, but their results compose naturally.
-
-## Quick Example
-```php
-use tommyknocker\chain\Chain;
-
-// Process user data through multiple transformations
-$orderTotal = Chain::of(new User('Alice', 25))
-    ->setEmail('alice@example.com')
-    ->tap(fn($u) => logger()->info("Processing order for: " . $u->getName()))
-    ->map(fn($user) => new Order(strlen($user->getName()) * 10))
-    ->when(
-        fn($order) => $order->getTotal() > 30,
-        fn($chain) => $chain->applyDiscount(5)
-    )
-    ->getTotal()
-    ->get();
-
-echo $orderTotal; // 45 (50 - 5 discount)
-```
+Three focused PHP utilities in one package: fluent object calls, reusable step
+plans, and bounded concurrent HTTP requests.
 
 ## Installation
+
 ```bash
 composer require tommyknocker/chain
 ```
 
-`Chain::timeout()` additionally requires `ext-pcntl`; the rest of `Chain` and all of `Batch` work without it.
+The package requires PHP 8.5+, `ext-curl`, and `psr/container`. `ext-curl` is
+required even if you only use `Chain` or `Flow`, because all three utilities are
+part of one package. `Chain::timeout()` additionally requires `ext-pcntl`.
 
-## Core Concepts
-- Start with `Chain::of($object)` or `Chain::of(ClassName::class, ...$args)`
-- Every method call stays fluent; if a method returns an object, the chain context switches to it automatically
-- Use `change($idOrObject)` to jump to another object (resolved via PSR-11 container if configured)
-- Use `get()` to read the last result (or the current instance if there is no last result)
-- Use `invoke('method', ...$args)` when a wrapped-object method conflicts with Chain's own API, such as `get()` or `map()`
-- Use `requireInstance(Foo::class)` after a dynamic transition when PHPStan needs the verified receiver type
+## Choose an execution model
 
-## Documentation
+| Utility | Use it for | When work runs | Result |
+| --- | --- | --- | --- |
+| `Chain` | Fluent calls and transformations around an object | Immediately as methods are called | A current object and current value |
+| `Flow` | A reusable sequence of application steps | On `run()` or `execute()` | A final value or detailed execution |
+| `Batch` | Fetching or downloading independent HTTP resources | Inside a blocking `run()` | A report of successes and failures |
 
-- [API reference](docs/api-reference.md)
-- [State model](docs/state-model.md)
-- [Compatibility policy](docs/compatibility.md)
-- [Batch HTTP utility](docs/batch.md)
-- [Flow](docs/flow.md)
+These utilities are independent and can be combined where useful.
 
-## Compose reusable application steps
+## Chain: work with an object
+
+Wrap an object, call its methods fluently, and read the current value:
+
+```php
+use tommyknocker\chain\Chain;
+
+$counter = new class {
+    private int $value = 0;
+
+    public function next(): int { return ++$this->value; }
+    public function reset(): void { $this->value = 0; }
+};
+
+$chain = Chain::of($counter);
+$value = $chain->next()
+    ->pipe(static fn (int $n): int => $n * 10)
+    ->get();                         // 10
+
+$receiver = $chain->instance();      // $counter
+$result = $chain->reset()->get();    // null
+```
+
+`get()` returns the current value. Initially it is the wrapped object; after a
+wrapped method call it is that method's result, including `null` from a `void`
+method. `instance()` returns the current object used as the receiver for
+wrapped method calls. An object returned by a call becomes the new receiver;
+a scalar or `null` leaves the receiver unchanged.
+
+Use `invoke('method', ...$args)` when a wrapped method name conflicts with
+the Chain API. `requireInstance(Foo::class)` verifies the receiver type for
+PHPStan after a dynamic transition. Chain also provides branching, conditions,
+transformations, retry policies, and extension hooks.
+
+See the [state model](docs/state-model.md), [Chain examples](docs/chain-examples.md),
+and [API reference](docs/api-reference.md).
+
+## Flow: compose reusable steps
+
+Build a plan once, then run it with different inputs:
 
 ```php
 use tommyknocker\chain\Flow;
 
-$result = Flow::of(
-    ValidateOrder::class,
-    CreateInvoice::class,
-)->run($order);
+$base = Flow::of(static fn (string $name): string => trim($name));
+$normalized = $base->then(static fn (string $name): string => strtolower($name));
+
+$base->run('  PHP  ');        // 'PHP'
+$normalized->run('  PHP  ');  // 'php'
 ```
 
-Use `Flow` for named reusable actions; use `Chain` for an object/value workflow.
+Steps can be callables, `StepInterface` objects, class names resolved through a
+PSR-11 container, or nested flows. `then()` returns a new plan. `Flow::stop()`
+ends execution successfully, while `execute()` provides a result, failure, stop
+state, and step trace.
 
-## Fetch or download many URLs
+Plan immutability is structural: step objects, closure captures, and payloads
+are not cloned and may retain mutable state between runs. See the [Flow guide](docs/flow.md)
+and the runnable [Flow example](examples/flow.php).
 
-`Batch` is independent from `Chain` and uses cURL multi handles to run a bounded
-number of HTTP requests concurrently.
+## Batch: fetch and download URLs
+
+Fetch response bodies into memory:
 
 ```php
 use tommyknocker\chain\Batch;
 
-$texts = Batch::fetch($urls)
-    ->concurrency(12)
-    ->run()
-    ->throwIfFailed()
-    ->bodies();
+$texts = Batch::fetch([
+    'article-1' => 'https://example.com/first.txt',
+    'article-2' => 'https://example.com/second.txt',
+])->concurrency(8)->run()->throwIfFailed()->bodies();
 
-$files = Batch::download($imageUrls)
-    ->toDirectory('/var/app/images')
-    ->run()
-    ->throwIfFailed()
-    ->downloads();
+// $texts is keyed by article ID.
 ```
 
-Input keys are preserved, so an `id => url` array gives an `id => body` array
-for `fetch()` and lets you query `download($id)` for `download()`. See the
-[Batch HTTP utility](docs/batch.md) for file naming, partial failures, and
-memory limits.
+Or stream responses to files, with file names supplied as input keys:
 
-## API Overview
-
-**Core Methods:**
-- `of(string|object $target, ...$args): Chain` - Start a chain from an object or instantiate a class
-- `get(): mixed` - Get final result
-- `value(): mixed` - Alias for get(), more semantic
-- `instance(): object` - Get current wrapped object
-
-**Transformation:**
-- `tap(callable $fn): Chain` - Execute side effects
-- `map(callable $fn): Chain` - Transform to another object
-- `pipe(callable ...$pipes): Chain` - Functional pipeline
-- `inspect(callable $fn): Chain` - Observe current value without changing state
-- `filter(callable $predicate): Chain` - Filter an iterable current value
-- `flatMap(callable $mapper): Chain` - Map and flatten an iterable current value
-- `recover(callable $callback, callable $handler): Chain` - Recover a value transformation
-
-**Enhanced Control Flow:**
-- `whenAll(array $conditions, callable $callback, ?callable $else = null): Chain` - Execute when ALL conditions are true
-- `whenAny(array $conditions, callable $callback, ?callable $else = null): Chain` - Execute when ANY condition is true
-- `whenNone(array $conditions, callable $callback, ?callable $else = null): Chain` - Execute when NO conditions are true
-- `when(bool|callable $cond, callable $cb, ?callable $else = null): Chain` - Conditional execution
-- `unless(bool|callable $cond, callable $cb, ?callable $else = null): Chain` - Inverse conditional
-- `clone(): Chain` - Branch immutably
-
-**Resilience:**
-- `rescue(callable $callback, callable $handler): Chain` - Handle exceptions with fallback
-- `catch(string $exceptionClass, callable $callback, callable $handler): Chain` - Catch specific exceptions
-- `retry(int $times, callable $callback, int $delayMs = 0): Chain` - Retry with backoff
-- `retryWith(RetryPolicy $policy, callable $callback): Chain` - Retry with predicate, backoff, jitter, and attempt metadata
-- `timeout(?int $seconds, callable $callback): Chain` - Timeout protection; requires `ext-pcntl`
-
-**Iteration & Debugging:**
-- `each(callable $fn): Chain` - Iterate over collections
-- `dump(string $label = ''): Chain` - Debug output, continues chain
-- `dd(string $label = ''): never` - Dump and die
-
-**Container Integration:**
-- `change(string|object $target): Chain` - Switch to another object (PSR-11)
-
-**Configuration & Extensions:**
-- `Chain::configure(ChainConfig $config): void` - Set defaults for subsequently created chains
-- `withConfig(ChainConfig $config): Chain` - Override configuration for this chain
-- `Chain::setResolver(?ContainerInterface $resolver): void` - Set the default resolver for subsequently created chains
-- `withResolver(?ContainerInterface $resolver): Chain` - Override the resolver for this chain
-- `addExtension(ChainExtensionInterface $extension): Chain` - Add extension for monitoring/logging
-
-Global defaults are useful during application bootstrap. A chain captures them when `Chain::of()` creates it, so later global changes do not affect that chain. Use `withConfig()` and `withResolver()` to change one chain at any point in its workflow.
-
-## Examples
-
-### Basic Chaining
 ```php
-// Create instance and chain
-$result = Chain::of(new User('Alice', 25))
-    ->map(fn(User $user) => new Order(strlen($user->getName()) * 10))
-    ->getTotal()
-    ->get();
+$report = Batch::download([
+    'avatar-1.jpg' => 'https://example.com/images/first.jpg',
+    'avatar-2.jpg' => 'https://example.com/images/second.jpg',
+])->toDirectory('/var/app/images')
+    ->fileNamesFromKeys()
+    ->concurrency(8)
+    ->run();
 
-// Or instantiate via of()
-$result = Chain::of(StringBuilder::class, 'Hello')
-    ->append(' World')
-    ->uppercase()
-    ->toString()
-    ->get();
+$downloads = $report->downloads(); // Successful downloads, keyed by file name.
+$failures = $report->failures();   // Final failures, keyed by file name.
 ```
 
-### Conditional Logic
-```php
-// Smart banking: apply bonus for high-value accounts, charge fees for low balances
-$finalBalance = Chain::of(new Account())
-    ->deposit(500)
-    ->when(
-        fn($acc) => $acc->getBalance() > 300,
-        fn($chain) => $chain->addBonus()  // +100 bonus
-    )
-    ->unless(
-        fn($acc) => $acc->getBalance() < 100,
-        fn($chain) => $chain->withdraw(50)  // maintenance fee
-    )
-    ->getBalance()
-    ->get();
+`Batch` uses cURL multi for bounded concurrent HTTP I/O. `run()` blocks until
+the batch finishes or stops; it does not run PHP callbacks in parallel. The
+report can contain partial results. `throwIfFailed()` throws when failures were
+recorded; it does not roll back successful requests or files, and cancellation
+does not create failures for work that never started.
 
-echo $finalBalance; // 550 (500 + 100 bonus - 50 fee)
-```
+For request headers, authentication, retries, size limits, file naming, and
+other controls, see the [Batch guide](docs/batch.md) and [API reference](docs/api-reference.md#batch-http-utility).
 
-### Enhanced Conditional Logic
-```php
-// Multiple condition checking
-$chain = Chain::of(new User('Alice', 25));
-$chain->whenAll(
-    [
-        fn($u) => $u->isAdult(),
-        fn($u) => strlen($u->getName()) > 3,
-        fn($u) => $u->getAge() < 50
-    ],
-    fn($chain) => $chain->tap(fn($u) => $u->setEmail('alice@example.com'))
-);
-$result = $chain->getEmail()->get();
+## Documentation
 
-// Any condition can be true
-$chain = Chain::of(new User('Bob', 16));
-$chain->whenAny(
-    [
-        fn($u) => $u->isAdult(),
-        fn($u) => $u->getAge() > 15,
-        fn($u) => strlen($u->getName()) > 2
-    ],
-    fn($chain) => $chain->tap(fn($u) => $u->addRole('verified'))
-);
-$result = $chain->getRoles()->get();
-
-// No conditions should be true
-$chain = Chain::of(new User('Charlie', 25));
-$chain->whenNone(
-    [
-        fn($u) => $u->getAge() > 30,
-        fn($u) => $u->getAge() < 18,
-        fn($u) => strlen($u->getName()) < 3
-    ],
-    fn($chain) => $chain->tap(fn($u) => $u->addRole('special'))
-);
-$result = $chain->getRoles()->get();
-```
-```php
-// Complex order processing with business rules
-$total = Chain::of(new Order(100.0))
-    ->when(
-        fn($order) => $order->getTotal() > 50,
-        fn($chain) => $chain->applyDiscount(10)  // $10 off for orders > $50
-    )
-    ->unless(
-        fn($order) => $order->getTotal() < 20,
-        fn($chain) => $chain->addTax(0.08)  // 8% tax unless small order
-    )
-    ->getTotal()
-    ->get();
-
-echo $total; // 97.20 (100 - 10 discount + 8% tax on 90)
-```
-
-### Pipeline
-```php
-// Calculate price with multiple transformations
-$finalPrice = Chain::of(new Calculator(100))
-    ->subtract(20)  // Apply discount
-    ->multiply(1.08)  // Add 8% tax
-    ->pipe(
-        fn($c) => $c->getValue(),
-        fn($v) => round($v, 2),  // Round to 2 decimals
-        fn($v) => max($v, 0)  // Ensure non-negative
-    )
-    ->get();
-
-echo $finalPrice; // 86.4
-```
-
-### Pipelines with pipe()
-```php
-// Text processing pipeline for user input sanitization
-$sanitized = Chain::of(new StringBuilder('  Hello@World123  '))
-    ->pipe(
-        fn($b) => $b->toString(),
-        fn($text) => trim($text),
-        fn($text) => strtolower($text),
-        fn($text) => preg_replace('/[^a-z0-9]/', '', $text)
-    )
-    ->get();
-
-echo $sanitized; // 'helloworld123'
-```
-
-### Tap for Side Effects
-```php
-// Using tap for logging without breaking the chain
-$logger = Chain::of(new Logger())
-    ->log('Starting process')
-    ->log('Loading data')
-    ->tap(fn($l) => print("Current logs: " . $l->count() . "\n"))
-    ->log('Processing')
-    ->tap(fn($l) => print("Logs so far: " . implode(', ', $l->getLogs()) . "\n"))
-    ->log('Completed')
-    ->instance();
-
-echo "Total logs: " . $logger->count() . "\n";
-```
-
-### Branching
-```php
-// Calculate different pricing scenarios from same base
-$baseCalc = Chain::of(new Calculator(100));
-
-$retailPrice = $baseCalc->clone()->multiply(1.5)->getValue()->get();  // 150
-$wholesalePrice = $baseCalc->clone()->multiply(1.2)->getValue()->get();  // 120
-$memberPrice = $baseCalc->clone()->multiply(0.9)->getValue()->get();  // 90
-```
-
-### Immutable Branching with clone()
-```php
-// Explore different account scenarios without mutating original
-$baseAccount = Chain::of(new Account());
-
-$scenario1 = $baseAccount->clone()
-    ->deposit(1000)
-    ->withdraw(200)
-    ->getBalance()->get();  // 800
-
-$scenario2 = $baseAccount->clone()
-    ->deposit(500)
-    ->addBonus()
-    ->getBalance()->get();  // 600 (500 + 100 bonus)
-
-$original = $baseAccount->getBalance()->get();  // 0 (unchanged)
-```
-
-### Composite Scenario
-```php
-// Complex data processing workflow with multiple stages
-$report = Chain::of(new DataProcessor())
-    ->addItem(100)
-    ->addItem(250)
-    ->addItem(75)
-    ->addItem(300)
-    ->tap(fn($p) => logger()->info("Processing " . $p->count() . " items"))
-    ->invoke('filter', fn($x) => $x >= 100)  // Call DataProcessor::filter()
-    ->transform(fn($x) => $x * 1.08)  // Add 8% markup
-    ->pipe(
-        fn($p) => ['total' => $p->sum(), 'count' => $p->count()],
-        fn($stats) => new Report($stats['total'], $stats['count']),
-        fn($report) => $report->format()
-    )
-    ->get();
-
-echo $report; // "Total: 702.00, Count: 3, Average: 234.00"
-```
-
-### Timeout Protection
-```php
-// Protect against slow operations
-try {
-    $result = Chain::of(new Calculator(10))
-        ->timeout(2, function ($calc) {
-            // Simulate slow operation
-            usleep(1000000); // 1 second
-            return $calc->add(5);
-        })
-        ->getValue()
-        ->get();
-    
-    echo "Result: $result\n";
-} catch (\tommyknocker\chain\Exception\ChainTimeoutException $e) {
-    echo "Operation timed out: " . $e->getMessage() . "\n";
-}
-```
-
-### Configuration & Extensions
-```php
-// Set default behavior for chains created after this call
-Chain::configure(ChainConfig::performance());
-
-// Override settings for one chain without changing other chains
-$result = Chain::of(new Calculator(10))
-    ->withConfig(ChainConfig::development())
-    ->retry(null, fn($calculator) => $calculator->add(5))
-    ->getValue()
-    ->get();
-
-// Add monitoring extension
-class LoggingExtension implements ChainExtensionInterface
-{
-    private array $logs = [];
-
-    public function beforeMethodCall(string $method, array $args): void
-    {
-        $this->logs[] = "Before: {$method}";
-    }
-
-    public function afterMethodCall(string $method, mixed $result): void
-    {
-        $this->logs[] = "After: {$method}";
-    }
-
-    public function getLogs(): array
-    {
-        return $this->logs;
-    }
-}
-
-$logger = new LoggingExtension();
-
-$result = Chain::of(new Calculator(10))
-    ->addExtension($logger)
-    ->add(5)
-    ->multiply(2)
-    ->getValue()
-    ->get();
-
-// Check logs
-foreach ($logger->getLogs() as $log) {
-    echo "$log\n";
-}
-```
-```php
-// PSR-11 Container integration with change()
-$container = new SimpleContainer();
-$container->set('email', new EmailService());
-$container->set('notification', new NotificationService());
-
-// Set a resolver default during bootstrap
-Chain::setResolver($container);
-
-// Switch between services dynamically
-$result1 = Chain::of($container->get('email'))
-    ->send('user@example.com')
-    ->get();
-
-$result2 = Chain::of($container->get('email'))
-    ->withResolver($container) // Optional local override for this chain
-    ->change('notification')  // Switch to notification service
-    ->notify('Important update')
-    ->get();
-
-echo "$result1\n";  // "Email sent to user@example.com"
-echo "$result2\n";  // "Notification: Important update"
-```
+- [API reference](docs/api-reference.md) and [compatibility policy](docs/compatibility.md)
+- [Chain state model](docs/state-model.md) and [Chain examples](docs/chain-examples.md)
+- [Flow guide](docs/flow.md)
+- [Batch HTTP guide](docs/batch.md)
+- [Runnable examples](examples/README.md)
+- [Design note: Chain, Flow, and Batch execution models](https://krivoplyas.42x.ru/notes/chain-execution-models/)
+- [Changelog](CHANGELOG.md)
 
 ## Development
 
-### Installation
 ```bash
 composer install
-```
-
-### Testing
-```bash
-composer test              # Run all tests
-composer test:coverage     # Run tests with coverage report
-composer test:ci          # Run tests for CI (with JUnit output)
-```
-
-### Code Quality
-```bash
-composer phpstan          # Static analysis
-composer cs:fix           # Fix code style issues
-composer cs:check         # Check code style (dry-run)
-composer quality          # Run all quality checks
-composer quality:fix      # Run quality checks and fix issues
-```
-
-### Examples
-```bash
-composer examples         # Test all examples
-```
-
-### Release Management
-```bash
-composer release          # Create new release
-```
-
-## Examples
-
-See the [`examples/`](examples/) directory for working examples:
-- [`workflow.php`](examples/workflow.php) - **Complete workflow** with User→Profile context switching
-- [`conditionals.php`](examples/conditionals.php) - Conditional execution with when/unless
-- [`branching.php`](examples/branching.php) - Clone chains for independent branches
-- [`pipeline.php`](examples/pipeline.php) - Functional pipelines with pipe()
-- [`processing.php`](examples/processing.php) - Data processing with each(), dump(), value()
-- [`resilience.php`](examples/resilience.php) - Error handling with rescue(), catch(), retry()
-- [`container.php`](examples/container.php) - PSR-11 container integration
-- [`advanced-features.php`](examples/advanced-features.php) - **NEW!** All enhanced features demo
-
-Run examples:
-```bash
-php examples/advanced-features.php  # Run specific example
-composer examples                   # Test all examples
+composer quality       # Style, PHPStan, and tests
+composer examples      # Run the examples
+composer test          # PHPUnit only
+composer test:coverage # Coverage report
+composer phpstan       # Static analysis
+composer cs:fix        # Apply code style fixes
 ```
 
 ## License
-MIT. See LICENSE file.
 
-## Changelog
-See [CHANGELOG.md](CHANGELOG.md) for a list of changes and version history.
-
+MIT. See [LICENSE](LICENSE).
