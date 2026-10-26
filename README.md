@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/tommyknocker/chain/actions/workflows/ci.yml/badge.svg)](https://github.com/tommyknocker/chain/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![PHP Version](https://img.shields.io/badge/PHP-8.0+-777bb3.svg)](https://www.php.net/)
+[![PHP Version](https://img.shields.io/badge/PHP-8.5+-777bb3.svg)](https://www.php.net/)
 [![PHPStan Level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
 
 Fluent method chaining & context switching utility for PHP. Call methods across objects, transform or branch chains, and conditionally execute logic in a concise style.
@@ -51,9 +51,9 @@ composer require tommyknocker/chain
 - `pipe(callable ...$pipes): Chain` - Functional pipeline
 
 **Enhanced Control Flow:**
-- `whenAll(callable ...$conditions): Chain` - Execute when ALL conditions are true
-- `whenAny(callable ...$conditions): Chain` - Execute when ANY condition is true  
-- `whenNone(callable ...$conditions): Chain` - Execute when NO conditions are true
+- `whenAll(array $conditions, callable $callback, ?callable $else = null): Chain` - Execute when ALL conditions are true
+- `whenAny(array $conditions, callable $callback, ?callable $else = null): Chain` - Execute when ANY condition is true
+- `whenNone(array $conditions, callable $callback, ?callable $else = null): Chain` - Execute when NO conditions are true
 - `when(bool|callable $cond, callable $cb, ?callable $else = null): Chain` - Conditional execution
 - `unless(bool|callable $cond, callable $cb, ?callable $else = null): Chain` - Inverse conditional
 - `clone(): Chain` - Branch immutably
@@ -62,7 +62,7 @@ composer require tommyknocker/chain
 - `rescue(callable $callback, callable $handler): Chain` - Handle exceptions with fallback
 - `catch(string $exceptionClass, callable $callback, callable $handler): Chain` - Catch specific exceptions
 - `retry(int $times, callable $callback, int $delayMs = 0): Chain` - Retry with backoff
-- `timeout(int $seconds, callable $callback): Chain` - Timeout protection
+- `timeout(?int $seconds, callable $callback): Chain` - Timeout protection; requires `ext-pcntl`
 
 **Iteration & Debugging:**
 - `each(callable $fn): Chain` - Iterate over collections
@@ -117,37 +117,40 @@ echo $finalBalance; // 550 (500 + 100 bonus - 50 fee)
 ### Enhanced Conditional Logic
 ```php
 // Multiple condition checking
-$result = Chain::of(new User('Alice', 25))
-    ->whenAll(
+$chain = Chain::of(new User('Alice', 25));
+$chain->whenAll(
+    [
         fn($u) => $u->isAdult(),
         fn($u) => strlen($u->getName()) > 3,
         fn($u) => $u->getAge() < 50
-    )
-    ->tap(fn($u) => $u->setEmail('alice@example.com'))
-    ->getEmail()
-    ->get();
+    ],
+    fn($chain) => $chain->tap(fn($u) => $u->setEmail('alice@example.com'))
+);
+$result = $chain->getEmail()->get();
 
 // Any condition can be true
-$result = Chain::of(new User('Bob', 16))
-    ->whenAny(
+$chain = Chain::of(new User('Bob', 16));
+$chain->whenAny(
+    [
         fn($u) => $u->isAdult(),
         fn($u) => $u->getAge() > 15,
         fn($u) => strlen($u->getName()) > 2
-    )
-    ->tap(fn($u) => $u->addRole('verified'))
-    ->getRoles()
-    ->get();
+    ],
+    fn($chain) => $chain->tap(fn($u) => $u->addRole('verified'))
+);
+$result = $chain->getRoles()->get();
 
 // No conditions should be true
-$result = Chain::of(new User('Charlie', 25))
-    ->whenNone(
+$chain = Chain::of(new User('Charlie', 25));
+$chain->whenNone(
+    [
         fn($u) => $u->getAge() > 30,
         fn($u) => $u->getAge() < 18,
         fn($u) => strlen($u->getName()) < 3
-    )
-    ->tap(fn($u) => $u->addRole('special'))
-    ->getRoles()
-    ->get();
+    ],
+    fn($chain) => $chain->tap(fn($u) => $u->addRole('special'))
+);
+$result = $chain->getRoles()->get();
 ```
 ```php
 // Complex order processing with business rules

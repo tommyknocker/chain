@@ -22,17 +22,11 @@ trait ErrorHandlingTrait
         try {
             $result = $callback($this->instance);
 
-            if (is_object($result)) {
-                $this->instance = $result;
-            }
-            $this->result = $result;
+            $this->setResult($result);
         } catch (\Throwable $e) {
             $result = $handler($e);
 
-            if (is_object($result)) {
-                $this->instance = $result;
-            }
-            $this->result = $result;
+            $this->setResult($result);
         }
 
         return $this;
@@ -63,18 +57,26 @@ trait ErrorHandlingTrait
      * @param callable $callback Callback to execute with retry
      * @param int $delayMs Delay between retries in milliseconds
      */
-    public function retry(int $times, callable $callback, int $delayMs = 0): self
+    public function retry(?int $times, callable $callback, ?int $delayMs = null): self
     {
-        $lastException = null;
+        $config = self::getConfig();
+        $times ??= $config->maxRetryAttempts;
+        $delayMs ??= $config->defaultRetryDelay;
+
+        if ($times < 1) {
+            throw new \InvalidArgumentException('retry() requires at least one attempt.');
+        }
+        if ($delayMs < 0) {
+            throw new \InvalidArgumentException('retry() delay must be zero or greater.');
+        }
+
+        $lastException = new \LogicException('retry() did not run.');
 
         for ($attempt = 1; $attempt <= $times; $attempt++) {
             try {
                 $result = $callback($this->instance);
 
-                if (is_object($result)) {
-                    $this->instance = $result;
-                }
-                $this->result = $result;
+                $this->setResult($result);
 
                 return $this;
             } catch (\Throwable $e) {
@@ -86,11 +88,7 @@ trait ErrorHandlingTrait
             }
         }
 
-        if ($lastException !== null) {
-            throw $lastException;
-        }
-
-        return $this;
+        throw $lastException;
     }
 
     /**
@@ -99,19 +97,31 @@ trait ErrorHandlingTrait
      * @param int $seconds Timeout in seconds
      * @param callable $callback Callback to execute
      */
-    public function timeout(int $seconds, callable $callback): self
+    public function timeout(?int $seconds, callable $callback): self
     {
-        $start = time();
-        $result = $callback($this->instance);
+        $seconds ??= self::getConfig()->defaultTimeout;
+        if ($seconds < 1) {
+            throw new \InvalidArgumentException('timeout() requires at least one second.');
+        }
+        if (!extension_loaded('pcntl')) {
+            throw new \LogicException('timeout() requires the PCNTL extension.');
+        }
 
-        if (time() - $start > $seconds) {
+        pcntl_async_signals(true);
+        $previousHandler = pcntl_signal_get_handler(SIGALRM);
+        pcntl_signal(SIGALRM, static function () use ($seconds): void {
             throw new ChainTimeoutException("Operation timed out after {$seconds} seconds");
+        });
+        pcntl_alarm($seconds);
+
+        try {
+            $result = $callback($this->instance);
+        } finally {
+            pcntl_alarm(0);
+            pcntl_signal(SIGALRM, $previousHandler);
         }
 
-        if (is_object($result)) {
-            $this->instance = $result;
-        }
-        $this->result = $result;
+        $this->setResult($result);
 
         return $this;
     }

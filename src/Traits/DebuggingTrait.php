@@ -16,7 +16,7 @@ trait DebuggingTrait
      */
     public function dump(string $label = ''): self
     {
-        $value = $this->result ?? $this->instance;
+        $value = $this->currentValue();
         $output = print_r($value, true);
         echo ($label !== '' ? "[$label] " : '') . $output . "\n";
 

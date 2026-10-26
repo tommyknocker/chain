@@ -21,15 +21,16 @@ final class ChainEnhancedTest extends TestCase
         $calc = new Calculator(10);
         $executed = false;
 
-        Chain::of($calc)
-            ->whenAll(
+        Chain::of($calc)->whenAll(
+            [
                 fn ($c) => $c->isPositive(),
                 fn ($c) => $c->getValue() > 5,
-                fn ($c) => $c->getValue() < 20
-            )
-            ->tap(function ($chain) use (&$executed) {
+                fn ($c) => $c->getValue() < 20,
+            ],
+            function ($chain) use (&$executed): void {
                 $executed = true;
-            });
+            }
+        );
 
         $this->assertTrue($executed);
     }
@@ -39,18 +40,18 @@ final class ChainEnhancedTest extends TestCase
         $calc = new Calculator(10);
         $executed = false;
 
-        Chain::of($calc)
-            ->whenAll(
+        Chain::of($calc)->whenAll(
+            [
                 fn ($c) => $c->isPositive(),
-                fn ($c) => $c->getValue() > 15, // This is false
-                fn ($c) => $c->getValue() < 20
-            )
-            ->tap(function ($chain) use (&$executed) {
+                fn ($c) => $c->getValue() > 15,
+                fn ($c) => $c->getValue() < 20,
+            ],
+            function ($chain) use (&$executed): void {
                 $executed = true;
-            });
+            }
+        );
 
-        // The chain should continue even when whenAll conditions are false
-        $this->assertTrue($executed);
+        $this->assertFalse($executed);
     }
 
     public function testWhenAnyExecutesWhenAnyConditionTrue(): void
@@ -58,15 +59,16 @@ final class ChainEnhancedTest extends TestCase
         $calc = new Calculator(10);
         $executed = false;
 
-        Chain::of($calc)
-            ->whenAny(
-                fn ($c) => $c->getValue() > 15, // This is false
-                fn ($c) => $c->isPositive(),   // This is true
-                fn ($c) => $c->getValue() < 5   // This is false
-            )
-            ->tap(function ($chain) use (&$executed) {
+        Chain::of($calc)->whenAny(
+            [
+                fn ($c) => $c->getValue() > 15,
+                fn ($c) => $c->isPositive(),
+                fn ($c) => $c->getValue() < 5,
+            ],
+            function ($chain) use (&$executed): void {
                 $executed = true;
-            });
+            }
+        );
 
         $this->assertTrue($executed);
     }
@@ -76,18 +78,18 @@ final class ChainEnhancedTest extends TestCase
         $calc = new Calculator(10);
         $executed = false;
 
-        Chain::of($calc)
-            ->whenAny(
-                fn ($c) => $c->getValue() > 15, // This is false
-                fn ($c) => $c->isNegative(),   // This is false
-                fn ($c) => $c->getValue() < 5   // This is false
-            )
-            ->tap(function ($chain) use (&$executed) {
+        Chain::of($calc)->whenAny(
+            [
+                fn ($c) => $c->getValue() > 15,
+                fn ($c) => $c->isNegative(),
+                fn ($c) => $c->getValue() < 5,
+            ],
+            function ($chain) use (&$executed): void {
                 $executed = true;
-            });
+            }
+        );
 
-        // The chain should continue even when whenAny conditions are false
-        $this->assertTrue($executed);
+        $this->assertFalse($executed);
     }
 
     public function testWhenNoneExecutesWhenNoConditionsTrue(): void
@@ -95,15 +97,16 @@ final class ChainEnhancedTest extends TestCase
         $calc = new Calculator(10);
         $executed = false;
 
-        Chain::of($calc)
-            ->whenNone(
-                fn ($c) => $c->getValue() > 15, // This is false
-                fn ($c) => $c->isNegative(),   // This is false
-                fn ($c) => $c->getValue() < 5   // This is false
-            )
-            ->tap(function ($chain) use (&$executed) {
+        Chain::of($calc)->whenNone(
+            [
+                fn ($c) => $c->getValue() > 15,
+                fn ($c) => $c->isNegative(),
+                fn ($c) => $c->getValue() < 5,
+            ],
+            function ($chain) use (&$executed): void {
                 $executed = true;
-            });
+            }
+        );
 
         $this->assertTrue($executed);
     }
@@ -113,18 +116,18 @@ final class ChainEnhancedTest extends TestCase
         $calc = new Calculator(10);
         $executed = false;
 
-        Chain::of($calc)
-            ->whenNone(
-                fn ($c) => $c->isPositive(),   // This is true
-                fn ($c) => $c->getValue() > 15, // This is false
-                fn ($c) => $c->getValue() < 5   // This is false
-            )
-            ->tap(function ($chain) use (&$executed) {
+        Chain::of($calc)->whenNone(
+            [
+                fn ($c) => $c->isPositive(),
+                fn ($c) => $c->getValue() > 15,
+                fn ($c) => $c->getValue() < 5,
+            ],
+            function ($chain) use (&$executed): void {
                 $executed = true;
-            });
+            }
+        );
 
-        // The chain should continue even when whenNone conditions are true
-        $this->assertTrue($executed);
+        $this->assertFalse($executed);
     }
 
     // ==================== Timeout Tests ====================
@@ -156,6 +159,24 @@ final class ChainEnhancedTest extends TestCase
             });
     }
 
+    public function testTimeoutInterruptsTheCallbackBeforeItsSideEffect(): void
+    {
+        $value = new \stdClass();
+        $value->completed = false;
+
+        try {
+            Chain::of($value)->timeout(1, function (\stdClass $value): \stdClass {
+                sleep(2);
+                $value->completed = true;
+
+                return $value;
+            });
+            $this->fail('Expected a timeout.');
+        } catch (ChainTimeoutException) {
+            $this->assertFalse($value->completed);
+        }
+    }
+
     // ==================== Configuration Tests ====================
 
     public function testConfigurationCanBeSet(): void
@@ -179,6 +200,43 @@ final class ChainEnhancedTest extends TestCase
             ->get();
 
         $this->assertSame(15.0, $result);
+    }
+
+    public function testConfigurationProvidesRetryDefaults(): void
+    {
+        Chain::configure(new ChainConfig(maxRetryAttempts: 2, defaultRetryDelay: 0));
+        $attempts = 0;
+
+        $result = Chain::of(new Calculator(10))
+            ->retry(null, function (Calculator $calculator) use (&$attempts): Calculator {
+                $attempts++;
+                if ($attempts === 1) {
+                    throw new \RuntimeException('Retry once');
+                }
+
+                return $calculator->add(5);
+            })
+            ->getValue()
+            ->get();
+
+        $this->assertSame(2, $attempts);
+        $this->assertSame(15.0, $result);
+    }
+
+    public function testDeepCloneConfigurationClonesNestedObjects(): void
+    {
+        Chain::configure(new ChainConfig(enableDeepCloning: true));
+        $object = new \stdClass();
+        $object->child = new \stdClass();
+        $object->child->value = 1;
+
+        $clone = Chain::of($object)->clone()->instance();
+        $clone->child->value = 2;
+
+        $this->assertNotSame($object->child, $clone->child);
+        $this->assertSame(1, $object->child->value);
+
+        Chain::configure(ChainConfig::default());
     }
 
     // ==================== Extension Tests ====================
@@ -231,17 +289,20 @@ final class ChainEnhancedTest extends TestCase
             }
         };
 
-        $result = Chain::of($user)
-            ->addExtension($extension)
-            ->whenAll(
+        $chain = Chain::of($user)->addExtension($extension);
+        $result = $chain->whenAll(
+            [
                 fn ($u) => $u->isAdult(),
-                fn ($u) => strlen($u->getName()) > 3
-            )
-            ->whenAny(
+                fn ($u) => strlen($u->getName()) > 3,
+            ],
+            fn ($chain) => $chain->whenAny(
+                [
                 fn ($u) => $u->getAge() > 20,
-                fn ($u) => $u->getAge() < 30
+                fn ($u) => $u->getAge() < 30,
+                ],
+                fn ($chain) => $chain->timeout(5, fn ($u) => $u->setEmail('alice@example.com'))
             )
-            ->timeout(5, fn ($u) => $u->setEmail('alice@example.com'))
+        )
             ->getEmail()
             ->get();
 

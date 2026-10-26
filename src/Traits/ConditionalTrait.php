@@ -12,54 +12,48 @@ trait ConditionalTrait
     /**
      * Execute callback when all conditions are true.
      *
-     * @param callable ...$conditions Conditions to check
+     * @param array<callable> $conditions Conditions to check
      */
-    public function whenAll(callable ...$conditions): self
+    public function whenAll(array $conditions, callable $callback, ?callable $default = null): self
     {
-        $allTrue = true;
         foreach ($conditions as $condition) {
-            if (!($condition($this->instance))) {
-                $allTrue = false;
-                break;
+            if (!$condition($this->instance)) {
+                return $this->when(false, $callback, $default);
             }
         }
 
-        return $this->when($allTrue, fn ($chain) => $chain);
+        return $this->when(true, $callback, $default);
     }
 
     /**
      * Execute callback when any condition is true.
      *
-     * @param callable ...$conditions Conditions to check
+     * @param array<callable> $conditions Conditions to check
      */
-    public function whenAny(callable ...$conditions): self
+    public function whenAny(array $conditions, callable $callback, ?callable $default = null): self
     {
-        $anyTrue = false;
         foreach ($conditions as $condition) {
             if ($condition($this->instance)) {
-                $anyTrue = true;
-                break;
+                return $this->when(true, $callback, $default);
             }
         }
 
-        return $this->when($anyTrue, fn ($chain) => $chain);
+        return $this->when(false, $callback, $default);
     }
 
     /**
      * Execute callback when none of the conditions are true.
      *
-     * @param callable ...$conditions Conditions to check
+     * @param array<callable> $conditions Conditions to check
      */
-    public function whenNone(callable ...$conditions): self
+    public function whenNone(array $conditions, callable $callback, ?callable $default = null): self
     {
-        $noneTrue = true;
         foreach ($conditions as $condition) {
             if ($condition($this->instance)) {
-                $noneTrue = false;
-                break;
+                return $this->when(false, $callback, $default);
             }
         }
 
-        return $this->when($noneTrue, fn ($chain) => $chain);
+        return $this->when(true, $callback, $default);
     }
 }

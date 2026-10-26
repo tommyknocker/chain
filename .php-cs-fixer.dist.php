@@ -11,8 +11,7 @@ $config = new PhpCsFixer\Config();
 return $config
     ->setRules([
         '@PSR12' => true,
-        '@PHP80Migration' => true,
-        '@PHP81Migration' => true,
+        '@PHP85Migration' => true,
         'array_syntax' => ['syntax' => 'short'],
         'binary_operator_spaces' => true,
         'blank_line_after_namespace' => true,

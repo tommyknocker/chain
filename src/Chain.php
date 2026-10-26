@@ -40,6 +40,7 @@ class Chain
 
     protected object $instance;
     protected mixed $result = null;
+    protected bool $hasResult = false;
     private static ?ContainerInterface $resolver = null;
     private static ?ChainConfig $config = null;
     /** @var array<string, bool> */
@@ -79,13 +80,13 @@ class Chain
     public function change(string|object $target): self
     {
         if (is_object($target)) {
-            $this->instance = $target;
+            $this->replaceCurrentObject($target);
 
             return $this;
         }
 
         if (self::$resolver && self::$resolver->has($target)) {
-            $this->instance = self::$resolver->get($target);
+            $this->replaceCurrentObject(self::$resolver->get($target));
 
             return $this;
         }
@@ -130,7 +131,7 @@ class Chain
         // Check method existence with caching if enabled
         if (self::getConfig()->enableMethodCaching) {
             if (!isset(self::$methodCache[$cacheKey])) {
-                self::$methodCache[$cacheKey] = method_exists($this->instance, $method);
+                self::$methodCache[$cacheKey] = is_callable([$this->instance, $method]);
             }
 
             if (!self::$methodCache[$cacheKey]) {
@@ -139,7 +140,7 @@ class Chain
                 );
             }
         } else {
-            if (!method_exists($this->instance, $method)) {
+            if (!is_callable([$this->instance, $method])) {
                 throw new ChainMethodNotFoundException(
                     sprintf('Method %s::%s() not found.', $class, $method)
                 );
@@ -152,15 +153,11 @@ class Chain
         }
 
         $result = $this->instance->{$method}(...$args);
-        $this->result = $result;
+        $this->setResult($result);
 
         // Call extensions after method call
         foreach ($this->extensions as $extension) {
             $extension->afterMethodCall($method, $result);
-        }
-
-        if (is_object($result)) {
-            $this->instance = $result; // chain can continue on returned object
         }
 
         return $this;
@@ -174,15 +171,14 @@ class Chain
         return $this;
     }
 
-    /** Replace the current instance with the object returned by mapper */
+    /** Replace the current value and instance with the object returned by mapper */
     public function map(callable $fn): self
     {
-        $mapped = $fn($this->instance);
+        $mapped = $fn($this->currentValue());
         if (!is_object($mapped)) {
             throw new ChainInvalidOperationException('map() must return an object.');
         }
-        $this->instance = $mapped;
-        $this->result = null; // reset last scalar result
+        $this->replaceCurrentObject($mapped);
 
         return $this;
     }
@@ -198,7 +194,7 @@ class Chain
      */
     public function get(): mixed
     {
-        return $this->result ?? $this->instance;
+        return $this->currentValue();
     }
 
     /**
@@ -233,25 +229,29 @@ class Chain
     /** Functional pipeline over successive results */
     public function pipe(callable ...$pipes): self
     {
-        $current = $this->instance;
+        $current = $this->currentValue();
         foreach ($pipes as $pipe) {
             $result = $pipe($current);
-            $this->result = $result;
+            $this->setResult($result);
             $current = $result;
-            if (is_object($result)) {
-                $this->instance = $result; // update context only if object
-            }
         }
 
         return $this;
     }
 
-    /** Clone chain & underlying instance (shallow) for immutable branching */
+    /** Clone chain and its current state for independent branching. */
     public function clone(): self
     {
         $cloned = clone $this;
-        $cloned->instance = clone $this->instance;
-        $cloned->extensions = []; // Reset extensions for cloned chain
+        $cloned->instance = self::getConfig()->enableDeepCloning
+            ? DeepCloner::clone($this->instance)
+            : clone $this->instance;
+
+        if ($this->hasResult && is_object($this->result)) {
+            $cloned->result = $this->result === $this->instance
+                ? $cloned->instance
+                : (self::getConfig()->enableDeepCloning ? DeepCloner::clone($this->result) : clone $this->result);
+        }
 
         return $cloned;
     }
@@ -272,7 +272,7 @@ class Chain
      */
     public function each(callable $fn): self
     {
-        $value = $this->result ?? $this->instance;
+        $value = $this->currentValue();
 
         if (is_array($value) || $value instanceof \Traversable) {
             foreach ($value as $key => $item) {
@@ -281,5 +281,30 @@ class Chain
         }
 
         return $this;
+    }
+
+    /** @internal */
+    protected function setResult(mixed $result): void
+    {
+        $this->result = $result;
+        $this->hasResult = true;
+
+        if (is_object($result)) {
+            $this->instance = $result;
+        }
+    }
+
+    /** @internal */
+    protected function replaceCurrentObject(object $object): void
+    {
+        $this->instance = $object;
+        $this->result = $object;
+        $this->hasResult = true;
+    }
+
+    /** @internal */
+    protected function currentValue(): mixed
+    {
+        return $this->hasResult ? $this->result : $this->instance;
     }
 }

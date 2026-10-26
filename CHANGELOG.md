@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Raised the minimum PHP version to 8.5 and upgraded the development toolchain.
+- Made `whenAll()`, `whenAny()`, and `whenNone()` execute explicit callbacks.
+- Made `timeout()` interrupt callbacks through PCNTL instead of checking elapsed time only after completion.
+
+### Fixed
+- Preserved `null` results and consistent current values across `pipe()`, `map()`, `change()`, and `clone()`.
+- Applied every `ChainConfig` option, including deep cloning and retry defaults.
+- Preserved wrapped objects' public `__call()` support and report inaccessible methods consistently.
+- Prevented the release script from overwriting existing tags.
+
 [Unreleased]: https://github.com/tommyknocker/chain/compare/v1.2.0...HEAD
 
 ## [1.2.0] - 2025-10-25

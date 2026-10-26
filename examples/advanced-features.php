@@ -85,41 +85,44 @@ echo str_repeat('-', 60) . "\n";
 $user = new User('Alice', 25);
 
 // whenAll - all conditions must be true
-$result1 = Chain::of($user)
-    ->whenAll(
+$chain1 = Chain::of($user);
+$chain1->whenAll(
+    [
         fn ($u) => $u->isAdult(),
         fn ($u) => strlen($u->getName()) > 3,
-        fn ($u) => $u->getAge() < 50
-    )
-    ->tap(fn ($u) => $u->setEmail('alice@example.com'))
-    ->getEmail()
-    ->get();
+        fn ($u) => $u->getAge() < 50,
+    ],
+    fn ($chain) => $chain->tap(fn ($u) => $u->setEmail('alice@example.com'))
+);
+$result1 = $chain1->getEmail()->get();
 
 echo "whenAll result: $result1 (should be alice@example.com)\n";
 
 // whenAny - any condition can be true
-$result2 = Chain::of($user)
-    ->whenAny(
+$chain2 = Chain::of($user);
+$chain2->whenAny(
+    [
         fn ($u) => $u->getAge() > 30,  // false
         fn ($u) => $u->isAdult(),      // true
-        fn ($u) => $u->getAge() < 18   // false
-    )
-    ->tap(fn ($u) => $u->addRole('verified'))
-    ->getRoles()
-    ->get();
+        fn ($u) => $u->getAge() < 18,   // false
+    ],
+    fn ($chain) => $chain->tap(fn ($u) => $u->addRole('verified'))
+);
+$result2 = $chain2->getRoles()->get();
 
 echo 'whenAny result: ' . implode(', ', $result2) . " (should include 'verified')\n";
 
 // whenNone - no conditions should be true
-$result3 = Chain::of($user)
-    ->whenNone(
+$chain3 = Chain::of($user);
+$chain3->whenNone(
+    [
         fn ($u) => $u->getAge() > 30,  // false
         fn ($u) => $u->getAge() < 18,  // false
-        fn ($u) => strlen($u->getName()) < 3  // false
-    )
-    ->tap(fn ($u) => $u->addRole('special'))
-    ->getRoles()
-    ->get();
+        fn ($u) => strlen($u->getName()) < 3,  // false
+    ],
+    fn ($chain) => $chain->tap(fn ($u) => $u->addRole('special'))
+);
+$result3 = $chain3->getRoles()->get();
 
 echo 'whenNone result: ' . implode(', ', $result3) . " (should include 'special')\n\n";
 
@@ -210,27 +213,32 @@ $monitor = new PerformanceMonitor();
 
 echo "Processing complex calculation with monitoring:\n";
 
-$finalResult = Chain::of(new Calculator(100))
-    ->addExtension($monitor)
-    ->whenAll(
+$chain = Chain::of(new Calculator(100))->addExtension($monitor);
+$chain->whenAll(
+    [
         fn ($c) => $c->isPositive(),
-        fn ($c) => $c->getValue() > 50
+        fn ($c) => $c->getValue() > 50,
+    ],
+    fn ($chain) => $chain->whenAny(
+        [
+            fn ($c) => $c->getValue() > 80,
+            fn ($c) => $c->getValue() < 200,
+        ],
+        fn ($chain) => $chain->timeout(5, fn ($c) => $c->multiply(1.1))
     )
-    ->whenAny(
-        fn ($c) => $c->getValue() > 80,
-        fn ($c) => $c->getValue() < 200
-    )
-    ->timeout(5, fn ($c) => $c->multiply(1.1))
-    ->whenNone(
+);
+$chain->whenNone(
+    [
         fn ($c) => $c->getValue() > 1000,
-        fn ($c) => $c->getValue() < 0
-    )
-    ->pipe(
+        fn ($c) => $c->getValue() < 0,
+    ],
+    fn ($chain) => $chain->pipe(
         fn ($c) => $c->subtract(10),
         fn ($c) => $c->multiply(0.9),
         fn ($c) => round($c->getValue(), 2)
     )
-    ->get();
+);
+$finalResult = $chain->get();
 
 echo "Final result: $finalResult\n\n";
 

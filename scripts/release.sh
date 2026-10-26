@@ -145,21 +145,18 @@ if [ $? -ne 0 ]; then
 fi
 echo "✅ All examples work correctly!"
 
-# Update version in composer.json (optional)
-echo ""
-echo "📝 Updating composer.json..."
-sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" composer.json
-
-# Commit version bump
-git add composer.json
-git commit -m "chore: bump version to ${VERSION}" 2>/dev/null || echo "  (version already up to date)"
-
 # Create tag
 echo ""
 echo "🏷️  Creating tag ${TAG}..."
-# Delete existing tag if present
-git tag -d "${TAG}" 2>/dev/null || true
-git push origin ":refs/tags/${TAG}" 2>/dev/null || true
+if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+    echo "❌ Tag ${TAG} already exists locally. Refusing to overwrite a release."
+    exit 1
+fi
+
+if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+    echo "❌ Tag ${TAG} already exists on origin. Refusing to overwrite a release."
+    exit 1
+fi
 
 git tag -a "${TAG}" -m "Release ${TAG}"
 

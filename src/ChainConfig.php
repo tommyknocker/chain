@@ -41,7 +41,7 @@ final class ChainConfig
     }
 
     /**
-     * Create a development configuration with debugging enabled.
+     * Create a development-oriented configuration.
      */
     public static function development(): self
     {

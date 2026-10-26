@@ -260,6 +260,15 @@ final class ChainAdvancedTest extends TestCase
         $this->assertNotSame($chain1->instance(), $chain2->instance());
     }
 
+    public function testCloneKeepsObjectResultAlignedWithItsInstance(): void
+    {
+        $original = new Calculator(10);
+        $branch = Chain::of($original)->add(5)->clone();
+
+        $this->assertNotSame($original, $branch->instance());
+        $this->assertSame($branch->instance(), $branch->get());
+    }
+
     public function testCloneAllowsIndependentModifications(): void
     {
         $calc = new Calculator(10);
@@ -353,7 +362,7 @@ final class ChainAdvancedTest extends TestCase
 
     // ==================== Edge Cases ====================
 
-    public function testGetWithNullResult(): void
+    public function testGetReturnsNullResult(): void
     {
         $obj = new class () {
             public function returnNull(): ?string
@@ -362,8 +371,7 @@ final class ChainAdvancedTest extends TestCase
             }
         };
         $chain = Chain::of($obj)->returnNull();
-        // get() returns instance when last result is null
-        $this->assertSame($obj, $chain->get());
+        $this->assertNull($chain->get());
     }
 
     public function testWhenWithFalsyValue(): void

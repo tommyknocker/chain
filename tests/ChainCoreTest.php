@@ -184,4 +184,52 @@ final class ChainCoreTest extends TestCase
 
         $this->assertSame('World', $chain->get(), 'make() should allow chaining methods on the created instance');
     }
+
+    public function testChangeReplacesTheCurrentValue(): void
+    {
+        $replacement = new \stdClass();
+
+        $chain = Chain::of(new class () {
+            public function number(): int
+            {
+                return 10;
+            }
+        })->number()->change($replacement);
+
+        $this->assertSame($replacement, $chain->get());
+        $this->assertSame($replacement, $chain->instance());
+    }
+
+    public function testPipeUsesThePreviousPipelineResult(): void
+    {
+        $result = Chain::of(new \stdClass())
+            ->pipe(fn ($value) => 5)
+            ->pipe(fn (int $value) => $value + 1)
+            ->get();
+
+        $this->assertSame(6, $result);
+    }
+
+    public function testDelegatesToTheWrappedObjectsMagicCall(): void
+    {
+        $result = Chain::of(new class () {
+            public function __call(string $method, array $arguments): string
+            {
+                return $method . ':' . implode(',', $arguments);
+            }
+        })->dynamic('value')->get();
+
+        $this->assertSame('dynamic:value', $result);
+    }
+
+    public function testRejectsAnInaccessibleMethodAsNotFound(): void
+    {
+        $this->expectException(\tommyknocker\chain\Exception\ChainMethodNotFoundException::class);
+
+        Chain::of(new class () {
+            private function hidden(): void
+            {
+            }
+        })->hidden();
+    }
 }
