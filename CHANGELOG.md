@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-26
+
 ### Changed
 - Raised the minimum PHP version to 8.5 and upgraded the development toolchain.
 - Made `whenAll()`, `whenAny()`, and `whenNone()` execute explicit callbacks.
@@ -29,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevented the release script from overwriting existing tags.
 - Made PCNTL optional for installation; only `Chain::timeout()` requires it.
 
-[Unreleased]: https://github.com/tommyknocker/chain/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/tommyknocker/chain/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/tommyknocker/chain/compare/v1.2.0...v2.0.0
 
 ## [1.2.0] - 2025-10-25
 
