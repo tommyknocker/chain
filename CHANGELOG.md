@@ -17,12 +17,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `invoke()` for wrapped methods whose names conflict with Chain's own API.
 - `requireInstance()` with a generic PHPStan return type for runtime-verified context types.
 - API reference and state-model documentation.
+- Value combinators: `inspect()`, `filter()`, `flatMap()`, and `recover()`.
+- `Batch::fetch()` and `Batch::download()` for bounded concurrent HTTP work.
+- `HttpRequest`, typed batch results, content validation, download limits, retry policies, lifecycle events, cancellation, and workload controls.
 
 ### Fixed
 - Preserved `null` results and consistent current values across `pipe()`, `map()`, `change()`, and `clone()`.
 - Applied every `ChainConfig` option, including deep cloning and retry defaults.
 - Preserved wrapped objects' public `__call()` support and report inaccessible methods consistently.
 - Prevented the release script from overwriting existing tags.
+- Made PCNTL optional for installation; only `Chain::timeout()` requires it.
 
 [Unreleased]: https://github.com/tommyknocker/chain/compare/v1.2.0...HEAD
 

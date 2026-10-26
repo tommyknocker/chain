@@ -16,7 +16,7 @@ Major releases may change public method signatures, state semantics, exception t
 
 ## Public API
 
-The public API is the `tommyknocker\chain` namespace, documented method contracts, exception types, and Composer requirements. Files under `tests/`, `examples/`, `benchmarks/`, and members marked `@internal` are not compatibility commitments.
+The public API is the `tommyknocker\chain` namespace, documented method contracts, exception types, and Composer requirements. `ext-pcntl` is optional and required only by `Chain::timeout()`. Files under `tests/`, `examples/`, `benchmarks/`, and members marked `@internal` are not compatibility commitments.
 
 ## Deprecation
 

@@ -84,6 +84,11 @@ final class HttpRequest
                 throw new InvalidArgumentException('HTTP header values cannot be empty.');
             }
             $request = $request->header($name, $values[0]);
+            foreach ($values as $value) {
+                if (str_contains($value, "\r") || str_contains($value, "\n")) {
+                    throw new InvalidArgumentException('HTTP header value must not contain newlines.');
+                }
+            }
             $key = strtolower($name);
             $request->headers[$key]['values'] = $values;
         }

@@ -194,6 +194,16 @@ abstract class AbstractBatch
     }
 
     /** @param callable(BatchEvent): void $observer */
+    public function onAttemptFailed(callable $observer): static
+    {
+        return $this->onEvent(static function (BatchEvent $event) use ($observer): void {
+            if ($event->type === BatchEventType::AttemptFailed) {
+                $observer($event);
+            }
+        });
+    }
+
+    /** @param callable(BatchEvent): void $observer */
     public function onProgress(callable $observer): static
     {
         return $this->onEvent(static function (BatchEvent $event) use ($observer): void {
@@ -235,7 +245,9 @@ abstract class AbstractBatch
                         $this->emit(new BatchEvent(BatchEventType::Started, $key, $request->url(), $attempt));
                     } catch (\Throwable $error) {
                         $sink?->abort();
-                        $report->addFailure(new Failure($key, $request->url(), FailureType::Preparation, $error->getMessage()));
+                        $failure = new Failure($key, $request->url(), FailureType::Preparation, $error->getMessage(), attempts: $attempt);
+                        $report->addFailure($failure);
+                        $this->emit(new BatchEvent(BatchEventType::Failed, $key, $request->url(), $attempt, failure: $failure));
                     }
                 }
                 if ($active === []) {
@@ -258,12 +270,17 @@ abstract class AbstractBatch
                     [$transfer, $attempt] = $entry;
                     $failure = $this->complete($report, $transfer, $completed['result'], $attempt);
                     curl_close($handle);
-                    if ($failure !== null && $this->retryPolicy?->shouldRetry($failure, $transfer->request(), $attempt)) {
+                    $retryPolicy = $this->retryPolicy;
+                    if ($failure !== null && $retryPolicy !== null && $retryPolicy->shouldRetry($failure, $transfer->request(), $attempt)) {
+                        $this->emit(new BatchEvent(BatchEventType::AttemptFailed, $transfer->key(), $transfer->url(), $attempt, failure: $failure));
                         $nextAttempt = $attempt + 1;
-                        $delayed[] = [microtime(true) + $this->retryPolicy->delayForAttempt($attempt), [$transfer->key(), $transfer->request(), $nextAttempt]];
+                        $delayed[] = [microtime(true) + $retryPolicy->delayForAttempt($attempt), [$transfer->key(), $transfer->request(), $nextAttempt]];
                         $this->emit(new BatchEvent(BatchEventType::Retrying, $transfer->key(), $transfer->url(), $nextAttempt, failure: $failure));
                     } elseif ($failure !== null && $this->failFast) {
+                        $this->emit(new BatchEvent(BatchEventType::Failed, $transfer->key(), $transfer->url(), $attempt, failure: $failure));
                         $this->cancelled = true;
+                    } elseif ($failure !== null) {
+                        $this->emit(new BatchEvent(BatchEventType::Failed, $transfer->key(), $transfer->url(), $attempt, failure: $failure));
                     }
                 }
                 if ($active === [] && $delayed !== []) {
@@ -288,8 +305,13 @@ abstract class AbstractBatch
     private function prepareJobs(Report $report): array
     {
         $jobs = [];
+        $total = 0;
         $seen = [];
         foreach ($this->requests as $key => $value) {
+            $total++;
+            if ($this->maxJobs !== null && $total > $this->maxJobs) {
+                throw new InvalidArgumentException(sprintf('Batch exceeds its %d job limit.', $this->maxJobs));
+            }
             if (isset($seen[$key])) {
                 throw new InvalidArgumentException(sprintf('Batch key %s is duplicated.', (string) $key));
             } $seen[$key] = true;
@@ -299,9 +321,6 @@ abstract class AbstractBatch
                 continue;
             }
             $jobs[] = [$key, $this->applyDefaults($request), 1];
-            if ($this->maxJobs !== null && count($jobs) > $this->maxJobs) {
-                throw new InvalidArgumentException(sprintf('Batch exceeds its %d job limit.', $this->maxJobs));
-            }
         }
 
         return $jobs;
@@ -351,7 +370,6 @@ abstract class AbstractBatch
         $transfer->sink()->abort();
         $failure = new Failure($transfer->key(), $transfer->url(), $type, $message, $curlCode, $status, $attempt);
         $report->addFailure($failure);
-        $this->emit(new BatchEvent(BatchEventType::Failed, $transfer->key(), $transfer->url(), $attempt, failure: $failure));
 
         return $failure;
     }

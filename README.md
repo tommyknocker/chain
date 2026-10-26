@@ -5,7 +5,12 @@
 [![PHP Version](https://img.shields.io/badge/PHP-8.5+-777bb3.svg)](https://www.php.net/)
 [![PHPStan Level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
 
-Fluent method chaining & context switching utility for PHP. Call methods across objects, transform or branch chains, and conditionally execute logic in a concise style. The package also includes `Batch`, a small bounded-concurrency cURL utility for fetching or downloading many independent URLs.
+Two focused PHP 8.5 utilities in one package:
+
+- **Chain** — fluent object workflows, branching, value transformations, and resilience primitives.
+- **Batch** — bounded concurrent HTTP fetches and downloads through `ext-curl`.
+
+Use `Chain` when one value or object moves through a workflow. Use `Batch` when many independent URLs must be fetched or downloaded concurrently. They are independent, but a `Batch` report can be transformed with `Chain` afterwards.
 
 ## Quick Example
 ```php
@@ -30,6 +35,8 @@ echo $orderTotal; // 45 (50 - 5 discount)
 ```bash
 composer require tommyknocker/chain
 ```
+
+`Chain::timeout()` additionally requires `ext-pcntl`; the rest of `Chain` and all of `Batch` work without it.
 
 ## Core Concepts
 - Start with `Chain::of($object)` or `Chain::of(ClassName::class, ...$args)`
@@ -127,8 +134,7 @@ Global defaults are useful during application bootstrap. A chain captures them w
 ```php
 // Create instance and chain
 $result = Chain::of(new User('Alice', 25))
-    ->getName()
-    ->map(fn($user) => new Order(strlen($user->getName()) * 10))
+    ->map(fn(User $user) => new Order(strlen($user->getName()) * 10))
     ->getTotal()
     ->get();
 

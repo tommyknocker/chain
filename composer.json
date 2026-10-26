@@ -1,6 +1,6 @@
 {
   "name": "tommyknocker/chain",
-  "description": "Professional-grade fluent method chaining library with advanced features: conditional execution, timeout protection, error handling, extension system, and PSR-11 container integration.",
+  "description": "Fluent object workflows and bounded concurrent HTTP batches for PHP 8.5.",
   "type": "library",
   "homepage": "https://github.com/tommyknocker/chain",
   "support": {
@@ -10,6 +10,11 @@
   "license": "MIT",
   "keywords": [
     "chain",
+    "batch",
+    "http",
+    "curl",
+    "download",
+    "concurrency",
     "chaining",
     "fluent",
     "fluent-interface",
@@ -42,8 +47,10 @@
   "require": {
     "ext-curl": "*",
     "php": "^8.5",
-    "ext-pcntl": "*",
     "psr/container": "^2.0"
+  },
+  "suggest": {
+    "ext-pcntl": "Required only for Chain::timeout()."
   },
   "require-dev": {
     "phpunit/phpunit": "^11.5.57",

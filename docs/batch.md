@@ -145,15 +145,19 @@ $report = Batch::fetch($urls)
 
 The default retry policy retries only GET and HEAD requests after transport
 errors, timeouts, and 408/429/502/503/504 responses. Retrying unsafe methods
-requires `retryUnsafeMethods: true` in `HttpRetryPolicy`. Observer exceptions
-are intentionally suppressed so logging or metrics cannot change batch results.
+requires `retryUnsafeMethods: true` in `HttpRetryPolicy`. `onFailed()` observes
+only final failures; use `onAttemptFailed()` to observe an attempt that will be
+retried. Observer exceptions are intentionally suppressed so logging or metrics
+cannot change batch results.
 
 ## Workload controls
 
 Use `maxJobs()` to reject unexpectedly large input before opening any HTTP
 connections. `failFast()` stops scheduling new jobs after a final failure; jobs
 already active are cleaned up. `cancel()` may be called by application code or
-an observer to stop the remaining work explicitly.
+an observer to stop the remaining work explicitly. Cancellation is best-effort:
+the report contains completed jobs and failures known before cancellation; it
+does not synthesize failures for work that never started.
 
 ```php
 $batch = Batch::download($urls)
