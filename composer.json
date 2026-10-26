@@ -1,6 +1,6 @@
 {
   "name": "tommyknocker/chain",
-  "description": "Fluent object workflows and bounded concurrent HTTP batches for PHP 8.5.",
+  "description": "Fluent chains, reusable application flows, and bounded concurrent HTTP batches for PHP 8.5.",
   "type": "library",
   "homepage": "https://github.com/tommyknocker/chain",
   "support": {
@@ -10,6 +10,9 @@
   "license": "MIT",
   "keywords": [
     "chain",
+    "flow",
+    "workflow",
+    "steps",
     "batch",
     "http",
     "curl",

@@ -22,6 +22,11 @@ Complete real-world user registration workflow with profile creation.
 - **Use Case**: User registration → validation → profile setup → conditional logic
 - **Demonstrates**: Context switching from User to Profile
 
+### [flow.php](flow.php)
+Reusable application-step plan with a named `StepInterface` step and a callback.
+- **Features**: `Flow::of()`, `StepInterface`, immutable payload progression
+- **Use Case**: Validation or processing workflows shared across handlers and jobs
+
 ### [conditionals.php](conditionals.php)
 Conditional execution with business rules.
 - **Features**: when(), unless()

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Global configuration and resolver calls now define defaults for new chains; `withConfig()` and `withResolver()` provide local overrides.
 
 ### Added
+- `Flow` for immutable, reusable application-step plans with nested flows, PSR-11 resolution, context, execution traces, events, and controlled early stops.
 - `invoke()` for wrapped methods whose names conflict with Chain's own API.
 - `requireInstance()` with a generic PHPStan return type for runtime-verified context types.
 - API reference and state-model documentation.

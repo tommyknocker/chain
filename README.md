@@ -5,12 +5,13 @@
 [![PHP Version](https://img.shields.io/badge/PHP-8.5+-777bb3.svg)](https://www.php.net/)
 [![PHPStan Level 8](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org/)
 
-Two focused PHP 8.5 utilities in one package:
+Three focused PHP 8.5 utilities in one package:
 
 - **Chain** — fluent object workflows, branching, value transformations, and resilience primitives.
 - **Batch** — bounded concurrent HTTP fetches and downloads through `ext-curl`.
+- **Flow** — immutable reusable plans of named application steps.
 
-Use `Chain` when one value or object moves through a workflow. Use `Batch` when many independent URLs must be fetched or downloaded concurrently. They are independent, but a `Batch` report can be transformed with `Chain` afterwards.
+Use `Chain` when one value or object moves through a fluent workflow. Use `Flow` when named application steps form a reusable plan. Use `Batch` when many independent URLs must be fetched or downloaded concurrently. The utilities are independent, but their results compose naturally.
 
 ## Quick Example
 ```php
@@ -52,6 +53,20 @@ composer require tommyknocker/chain
 - [State model](docs/state-model.md)
 - [Compatibility policy](docs/compatibility.md)
 - [Batch HTTP utility](docs/batch.md)
+- [Flow](docs/flow.md)
+
+## Compose reusable application steps
+
+```php
+use tommyknocker\chain\Flow;
+
+$result = Flow::of(
+    ValidateOrder::class,
+    CreateInvoice::class,
+)->run($order);
+```
+
+Use `Flow` for named reusable actions; use `Chain` for an object/value workflow.
 
 ## Fetch or download many URLs
 
