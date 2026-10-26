@@ -59,7 +59,7 @@ trait ErrorHandlingTrait
      */
     public function retry(?int $times, callable $callback, ?int $delayMs = null): self
     {
-        $config = self::getConfig();
+        $config = $this->config;
         $times ??= $config->maxRetryAttempts;
         $delayMs ??= $config->defaultRetryDelay;
 
@@ -99,7 +99,7 @@ trait ErrorHandlingTrait
      */
     public function timeout(?int $seconds, callable $callback): self
     {
-        $seconds ??= self::getConfig()->defaultTimeout;
+        $seconds ??= $this->config->defaultTimeout;
         if ($seconds < 1) {
             throw new \InvalidArgumentException('timeout() requires at least one second.');
         }

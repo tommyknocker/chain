@@ -12,7 +12,7 @@ $container = new SimpleContainer();
 $container->set('email', new EmailService());
 $container->set('notification', new NotificationService());
 
-// Set resolver for Chain
+// Set a resolver default for chains created after this call
 Chain::setResolver($container);
 
 // Change between services dynamically
@@ -21,6 +21,7 @@ $result1 = Chain::of($container->get('email'))
     ->get();
 
 $result2 = Chain::of($container->get('email'))
+    ->withResolver($container) // Optional local resolver for this chain
     ->change('notification')
     ->notify('Important update')
     ->get();

@@ -28,13 +28,13 @@ echo str_repeat('=', 60) . "\n\n";
 echo "1. Configuration System\n";
 echo str_repeat('-', 60) . "\n";
 
-// Set performance configuration
+// Set a default for subsequently created chains
 Chain::configure(ChainConfig::performance());
-echo "✓ Performance configuration enabled\n";
+echo "✓ Performance default enabled\n";
 
-// Set development configuration
-Chain::configure(ChainConfig::development());
-echo "✓ Development configuration enabled\n\n";
+// Override settings for one chain without changing the default
+$developmentChain = Chain::of(new Calculator(10))->withConfig(ChainConfig::development());
+echo "✓ Development configuration applied to one chain\n\n";
 
 // ==================== Extension System Demo ====================
 

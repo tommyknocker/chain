@@ -73,8 +73,13 @@ composer require tommyknocker/chain
 - `change(string|object $target): Chain` - Switch to another object (PSR-11)
 
 **Configuration & Extensions:**
-- `Chain::configure(ChainConfig $config): void` - Configure Chain behavior
+- `Chain::configure(ChainConfig $config): void` - Set defaults for subsequently created chains
+- `withConfig(ChainConfig $config): Chain` - Override configuration for this chain
+- `Chain::setResolver(?ContainerInterface $resolver): void` - Set the default resolver for subsequently created chains
+- `withResolver(?ContainerInterface $resolver): Chain` - Override the resolver for this chain
 - `addExtension(ChainExtensionInterface $extension): Chain` - Add extension for monitoring/logging
+
+Global defaults are useful during application bootstrap. A chain captures them when `Chain::of()` creates it, so later global changes do not affect that chain. Use `withConfig()` and `withResolver()` to change one chain at any point in its workflow.
 
 ## Examples
 
@@ -285,8 +290,15 @@ try {
 
 ### Configuration & Extensions
 ```php
-// Configure Chain behavior
+// Set default behavior for chains created after this call
 Chain::configure(ChainConfig::performance());
+
+// Override settings for one chain without changing other chains
+$result = Chain::of(new Calculator(10))
+    ->withConfig(ChainConfig::development())
+    ->retry(null, fn($calculator) => $calculator->add(5))
+    ->getValue()
+    ->get();
 
 // Add monitoring extension
 class LoggingExtension implements ChainExtensionInterface
@@ -329,6 +341,7 @@ $container = new SimpleContainer();
 $container->set('email', new EmailService());
 $container->set('notification', new NotificationService());
 
+// Set a resolver default during bootstrap
 Chain::setResolver($container);
 
 // Switch between services dynamically
@@ -337,6 +350,7 @@ $result1 = Chain::of($container->get('email'))
     ->get();
 
 $result2 = Chain::of($container->get('email'))
+    ->withResolver($container) // Optional local override for this chain
     ->change('notification')  // Switch to notification service
     ->notify('Important update')
     ->get();

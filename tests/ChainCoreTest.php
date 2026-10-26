@@ -9,6 +9,7 @@ use Psr\Container\ContainerInterface;
 use tommyknocker\chain\Chain;
 use tommyknocker\chain\Exception\ChainInvalidOperationException;
 use tommyknocker\chain\tests\fixtures\DummyClass;
+use tommyknocker\chain\tests\fixtures\SimpleContainer;
 
 final class ChainCoreTest extends TestCase
 {
@@ -231,5 +232,25 @@ final class ChainCoreTest extends TestCase
             {
             }
         })->hidden();
+    }
+
+    public function testLocalResolverDoesNotReplaceTheGlobalDefault(): void
+    {
+        $global = new SimpleContainer();
+        $globalService = new \stdClass();
+        $global->set('service', $globalService);
+        Chain::setResolver($global);
+
+        $local = new SimpleContainer();
+        $localService = new \stdClass();
+        $local->set('service', $localService);
+
+        $localChain = Chain::of(new \stdClass())->withResolver($local)->change('service');
+        $globalChain = Chain::of(new \stdClass())->change('service');
+
+        $this->assertSame($localService, $localChain->instance());
+        $this->assertSame($globalService, $globalChain->instance());
+
+        Chain::setResolver(null);
     }
 }

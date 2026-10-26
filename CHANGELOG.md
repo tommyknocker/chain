@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Raised the minimum PHP version to 8.5 and upgraded the development toolchain.
 - Made `whenAll()`, `whenAny()`, and `whenNone()` execute explicit callbacks.
 - Made `timeout()` interrupt callbacks through PCNTL instead of checking elapsed time only after completion.
+- Global configuration and resolver calls now define defaults for new chains; `withConfig()` and `withResolver()` provide local overrides.
 
 ### Fixed
 - Preserved `null` results and consistent current values across `pipe()`, `map()`, `change()`, and `clone()`.

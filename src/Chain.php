@@ -41,32 +41,43 @@ class Chain
     protected object $instance;
     protected mixed $result = null;
     protected bool $hasResult = false;
-    private static ?ContainerInterface $resolver = null;
-    private static ?ChainConfig $config = null;
+    private static ?ContainerInterface $defaultResolver = null;
+    private static ?ChainConfig $defaultConfig = null;
+    private ?ContainerInterface $resolver;
+    private ChainConfig $config;
     /** @var array<string, bool> */
     private static array $methodCache = [];
     /** @var array<int, ChainExtensionInterface> */
     private array $extensions = [];
 
-    public static function setResolver(ContainerInterface $resolver): void
+    /** Set the resolver default for chains created after this call. */
+    public static function setResolver(?ContainerInterface $resolver): void
     {
-        self::$resolver = $resolver;
+        self::$defaultResolver = $resolver;
     }
 
     /**
-     * Configure Chain behavior.
+     * Set the configuration default for chains created after this call.
      */
     public static function configure(ChainConfig $config): void
     {
-        self::$config = $config;
+        self::$defaultConfig = $config;
     }
 
-    /**
-     * Get current configuration or default.
-     */
-    private static function getConfig(): ChainConfig
+    /** Override configuration for this chain only. */
+    public function withConfig(ChainConfig $config): self
     {
-        return self::$config ?? ChainConfig::default();
+        $this->config = $config;
+
+        return $this;
+    }
+
+    /** Override the resolver for this chain only. */
+    public function withResolver(?ContainerInterface $resolver): self
+    {
+        $this->resolver = $resolver;
+
+        return $this;
     }
 
     /**
@@ -85,8 +96,8 @@ class Chain
             return $this;
         }
 
-        if (self::$resolver && self::$resolver->has($target)) {
-            $this->replaceCurrentObject(self::$resolver->get($target));
+        if ($this->resolver && $this->resolver->has($target)) {
+            $this->replaceCurrentObject($this->resolver->get($target));
 
             return $this;
         }
@@ -94,9 +105,11 @@ class Chain
         throw new ChainException("Cannot resolve target: $target");
     }
 
-    private function __construct(object $instance)
+    private function __construct(object $instance, ChainConfig $config, ?ContainerInterface $resolver)
     {
         $this->instance = $instance;
+        $this->config = $config;
+        $this->resolver = $resolver;
     }
 
     /**
@@ -113,7 +126,7 @@ class Chain
             $target = new $target(...$args);
         }
 
-        return new self($target);
+        return new self($target, self::$defaultConfig ?? ChainConfig::default(), self::$defaultResolver);
     }
 
     /**
@@ -129,7 +142,7 @@ class Chain
         $cacheKey = $class . '::' . $method;
 
         // Check method existence with caching if enabled
-        if (self::getConfig()->enableMethodCaching) {
+        if ($this->config->enableMethodCaching) {
             if (!isset(self::$methodCache[$cacheKey])) {
                 self::$methodCache[$cacheKey] = is_callable([$this->instance, $method]);
             }
@@ -243,14 +256,14 @@ class Chain
     public function clone(): self
     {
         $cloned = clone $this;
-        $cloned->instance = self::getConfig()->enableDeepCloning
+        $cloned->instance = $this->config->enableDeepCloning
             ? DeepCloner::clone($this->instance)
             : clone $this->instance;
 
         if ($this->hasResult && is_object($this->result)) {
             $cloned->result = $this->result === $this->instance
                 ? $cloned->instance
-                : (self::getConfig()->enableDeepCloning ? DeepCloner::clone($this->result) : clone $this->result);
+                : ($this->config->enableDeepCloning ? DeepCloner::clone($this->result) : clone $this->result);
         }
 
         return $cloned;

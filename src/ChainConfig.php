@@ -7,7 +7,7 @@ namespace tommyknocker\chain;
 /**
  * Configuration class for Chain behavior customization.
  */
-final class ChainConfig
+final readonly class ChainConfig
 {
     public function __construct(
         public bool $enableMethodCaching = true,

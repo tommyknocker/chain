@@ -10,10 +10,11 @@
 
 Exit criterion: a versioned public API reference and tests that describe observable behavior rather than implementation details.
 
-## 2. Make runtime configuration local and explicit
+## 2. Make runtime configuration local and explicit — completed
 
-- Replace mutable process-wide configuration and resolver state with immutable defaults plus per-chain overrides.
-- Add a `withConfig()` or factory API for independent chains in long-running processes.
+- `ChainConfig` is immutable.
+- `Chain::configure()` and `Chain::setResolver()` remain bootstrap defaults for new chains.
+- `withConfig()` and `withResolver()` override those defaults for one chain without affecting another.
 - Define extension lifecycle, error handling, clone behavior, and events for callback-based operations.
 - Add benchmark coverage before retaining or expanding method-call caching.
 

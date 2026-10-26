@@ -181,11 +181,22 @@ final class ChainEnhancedTest extends TestCase
 
     public function testConfigurationCanBeSet(): void
     {
-        $config = ChainConfig::performance();
-        Chain::configure($config);
+        Chain::configure(new ChainConfig(maxRetryAttempts: 2, defaultRetryDelay: 0));
+        $chain = Chain::of(new Calculator(10));
+        Chain::configure(new ChainConfig(maxRetryAttempts: 1, defaultRetryDelay: 0));
+        $attempts = 0;
 
-        // This test mainly verifies the method exists and doesn't throw
-        $this->assertInstanceOf(ChainConfig::class, $config);
+        $chain->retry(null, function (Calculator $calculator) use (&$attempts): Calculator {
+            $attempts++;
+            if ($attempts === 1) {
+                throw new \RuntimeException('Retry once');
+            }
+
+            return $calculator;
+        });
+
+        $this->assertSame(2, $attempts);
+        Chain::configure(ChainConfig::default());
     }
 
     public function testDefaultConfigurationIsUsedWhenNoneSet(): void
@@ -204,10 +215,10 @@ final class ChainEnhancedTest extends TestCase
 
     public function testConfigurationProvidesRetryDefaults(): void
     {
-        Chain::configure(new ChainConfig(maxRetryAttempts: 2, defaultRetryDelay: 0));
         $attempts = 0;
 
         $result = Chain::of(new Calculator(10))
+            ->withConfig(new ChainConfig(maxRetryAttempts: 2, defaultRetryDelay: 0))
             ->retry(null, function (Calculator $calculator) use (&$attempts): Calculator {
                 $attempts++;
                 if ($attempts === 1) {
