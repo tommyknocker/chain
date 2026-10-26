@@ -43,6 +43,7 @@ class Chain
     protected bool $hasResult = false;
     private static ?ContainerInterface $defaultResolver = null;
     private static ?ChainConfig $defaultConfig = null;
+    private static bool $timeoutActive = false;
     private ?ContainerInterface $resolver;
     private ChainConfig $config;
     /** @var array<string, bool> */
@@ -183,17 +184,21 @@ class Chain
             }
         }
 
-        // Call extensions before method call
-        foreach ($this->extensions as $extension) {
-            $extension->beforeMethodCall($method, $args);
-        }
+        try {
+            foreach ($this->extensions as $extension) {
+                $extension->beforeMethodCall($method, $args);
+            }
 
-        $result = $this->instance->{$method}(...$args);
-        $this->setResult($result);
+            $result = $this->instance->{$method}(...$args);
+            $this->setResult($result);
 
-        // Call extensions after method call
-        foreach ($this->extensions as $extension) {
-            $extension->afterMethodCall($method, $result);
+            foreach ($this->extensions as $extension) {
+                $extension->afterMethodCall($method, $result);
+            }
+        } catch (\Throwable $error) {
+            $this->notifyMethodError($method, $args, $error);
+
+            throw $error;
         }
 
         return $this;
@@ -366,5 +371,23 @@ class Chain
     protected function currentValue(): mixed
     {
         return $this->hasResult ? $this->result : $this->instance;
+    }
+
+    /**
+     * @param array<int|string, mixed> $args
+     */
+    private function notifyMethodError(string $method, array $args, \Throwable $error): void
+    {
+        foreach ($this->extensions as $extension) {
+            if (!$extension instanceof ChainErrorExtensionInterface) {
+                continue;
+            }
+
+            try {
+                $extension->onMethodError($method, $args, $error);
+            } catch (\Throwable) {
+                // The original method failure always takes precedence.
+            }
+        }
     }
 }

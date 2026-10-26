@@ -177,6 +177,16 @@ final class ChainEnhancedTest extends TestCase
         }
     }
 
+    public function testTimeoutRejectsNestedAlarms(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Nested timeout() calls are not supported.');
+
+        Chain::of(new Calculator(10))->timeout(2, function (Calculator $calculator): Calculator {
+            return Chain::of($calculator)->timeout(1, static fn (Calculator $calculator): Calculator => $calculator)->instance();
+        });
+    }
+
     // ==================== Configuration Tests ====================
 
     public function testConfigurationCanBeSet(): void

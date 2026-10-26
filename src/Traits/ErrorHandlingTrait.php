@@ -106,7 +106,11 @@ trait ErrorHandlingTrait
         if (!extension_loaded('pcntl')) {
             throw new \LogicException('timeout() requires the PCNTL extension.');
         }
+        if (self::$timeoutActive) {
+            throw new \LogicException('Nested timeout() calls are not supported.');
+        }
 
+        self::$timeoutActive = true;
         pcntl_async_signals(true);
         $previousHandler = pcntl_signal_get_handler(SIGALRM);
         pcntl_signal(SIGALRM, static function () use ($seconds): void {
@@ -119,6 +123,7 @@ trait ErrorHandlingTrait
         } finally {
             pcntl_alarm(0);
             pcntl_signal(SIGALRM, $previousHandler);
+            self::$timeoutActive = false;
         }
 
         $this->setResult($result);

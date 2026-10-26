@@ -60,6 +60,8 @@ Condition callbacks receive the current object. Action callbacks receive the `Ch
 
 `retry()` may repeat side effects. Pass an idempotent callback or provide its own deduplication.
 
+`timeout()` deliberately rejects nested calls. PCNTL exposes one process-wide alarm, so nesting cannot preserve both deadlines safely.
+
 ## Configuration, resolver, and extensions
 
 | Method | Contract |
@@ -68,9 +70,11 @@ Condition callbacks receive the current object. Action callbacks receive the `Ch
 | `withConfig(ChainConfig $config)` | Replaces configuration for this chain only. |
 | `Chain::setResolver(?ContainerInterface $resolver)` | Sets the default resolver for chains created later. Pass `null` to clear it. |
 | `withResolver(?ContainerInterface $resolver)` | Replaces the resolver for this chain only. |
-| `addExtension(ChainExtensionInterface $extension)` | Adds before/after hooks for wrapped-object calls, including `invoke()`. |
+| `addExtension(ChainExtensionInterface $extension)` | Adds before/after hooks for wrapped-object calls, including `invoke()`. Implement `ChainErrorExtensionInterface` as well to observe failures. |
 
 `ChainConfig` controls method-call caching, clone depth, retry defaults, retry delay, and timeout defaults. It is immutable.
+
+Extensions receive `beforeMethodCall()` in registration order, then the wrapped call, then `afterMethodCall()` in registration order. If any of these steps throws, every error extension receives `onMethodError()`; errors from that observer are suppressed so the original error propagates. Cloned chains retain the same extension instances. Callbacks passed to `retry()` or `timeout()` are not extension events unless they invoke a wrapped method through the chain.
 
 ## Exceptions
 

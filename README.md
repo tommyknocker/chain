@@ -43,6 +43,7 @@ composer require tommyknocker/chain
 
 - [API reference](docs/api-reference.md)
 - [State model](docs/state-model.md)
+- [Compatibility policy](docs/compatibility.md)
 
 ## API Overview
 
