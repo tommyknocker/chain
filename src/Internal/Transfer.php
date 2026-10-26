@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace tommyknocker\chain\Internal;
 
 use CurlHandle;
+use tommyknocker\chain\HttpRequest;
 
 final class Transfer
 {
@@ -12,27 +13,33 @@ final class Transfer
     private array $headers = [];
     private CurlHandle $handle;
 
+    /** @param list<string> $headers */
     public function __construct(
         private readonly int|string $key,
-        private readonly string $url,
+        private readonly HttpRequest $request,
         private readonly BatchSink $sink,
         int $timeoutMs,
         int $connectTimeoutMs,
+        array $headers,
+        bool $followRedirects,
+        ?callable $progress = null,
     ) {
-        $handle = curl_init($url);
+        $handle = curl_init($request->url());
         if ($handle === false) {
-            throw new \RuntimeException(sprintf('Could not initialize cURL for %s.', $url));
+            throw new \RuntimeException(sprintf('Could not initialize cURL for %s.', $request->url()));
         }
 
         $this->handle = $handle;
-        curl_setopt_array($this->handle, [
-            CURLOPT_FOLLOWLOCATION => true,
+        $options = [
+            CURLOPT_FOLLOWLOCATION => $followRedirects,
             CURLOPT_MAXREDIRS => 5,
             CURLOPT_CONNECTTIMEOUT_MS => $connectTimeoutMs,
             CURLOPT_TIMEOUT_MS => $timeoutMs,
             CURLOPT_NOSIGNAL => true,
             CURLOPT_FAILONERROR => false,
             CURLOPT_RETURNTRANSFER => false,
+            CURLOPT_CUSTOMREQUEST => $request->method() === '' ? null : $request->method(),
+            CURLOPT_HTTPHEADER => $headers,
             CURLOPT_WRITEFUNCTION => function (CurlHandle $handle, string $chunk): int {
                 return $this->sink->write($chunk);
             },
@@ -41,7 +48,24 @@ final class Transfer
 
                 return strlen($header);
             },
-        ]);
+        ];
+        if ($request->bodyValue() !== null) {
+            $options[CURLOPT_POSTFIELDS] = $request->bodyValue();
+        }
+        if ($request->basicCredentials() !== null) {
+            [$username, $password] = $request->basicCredentials();
+            $options[CURLOPT_HTTPAUTH] = CURLAUTH_BASIC;
+            $options[CURLOPT_USERPWD] = $username . ':' . $password;
+        }
+        if ($progress !== null) {
+            $options[CURLOPT_NOPROGRESS] = false;
+            $options[CURLOPT_XFERINFOFUNCTION] = function (CurlHandle $handle, int $downloadTotal, int $downloaded) use ($progress): int {
+                $progress($downloaded, $downloadTotal > 0 ? $downloadTotal : null);
+
+                return 0;
+            };
+        }
+        curl_setopt_array($this->handle, $options);
     }
 
     public function handle(): CurlHandle
@@ -56,7 +80,12 @@ final class Transfer
 
     public function url(): string
     {
-        return $this->url;
+        return $this->request->url();
+    }
+
+    public function request(): HttpRequest
+    {
+        return $this->request;
     }
 
     /** @return array<string, list<string>> */

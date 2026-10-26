@@ -9,10 +9,11 @@ final readonly class Failure
     public function __construct(
         private int|string $key,
         private string $url,
-        private string $type,
+        private FailureType $type,
         private string $message,
         private ?int $curlCode = null,
         private ?int $status = null,
+        private int $attempts = 1,
     ) {
     }
 
@@ -26,7 +27,7 @@ final readonly class Failure
         return $this->url;
     }
 
-    public function type(): string
+    public function type(): FailureType
     {
         return $this->type;
     }
@@ -44,5 +45,10 @@ final readonly class Failure
     public function status(): ?int
     {
         return $this->status;
+    }
+
+    public function attempts(): int
+    {
+        return $this->attempts;
     }
 }

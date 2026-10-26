@@ -13,10 +13,11 @@ final class DownloadBatch extends AbstractBatch
 {
     private ?string $directory = null;
     private bool $overwriteExistingFiles = false;
+    private ?int $maxDownloadBytes = null;
     private bool $fileNamesFromKeys = false;
     /** @var (callable(int|string, string): string)|null */
     private $fileNameResolver = null;
-    /** @var array<string, true> */
+    /** @var array<string, int|string> */
     private array $reservedPaths = [];
 
     public function toDirectory(string $directory): self
@@ -53,6 +54,17 @@ final class DownloadBatch extends AbstractBatch
         return $this;
     }
 
+    public function maxDownloadSize(int $bytes): self
+    {
+        if ($bytes < 1) {
+            throw new InvalidArgumentException('Maximum download size must be at least 1 byte.');
+        }
+
+        $this->maxDownloadBytes = $bytes;
+
+        return $this;
+    }
+
     public function run(): Report
     {
         if ($this->directory === null) {
@@ -67,20 +79,20 @@ final class DownloadBatch extends AbstractBatch
         return parent::run();
     }
 
-    protected function createSink(int|string $key, string $url): BatchSink
+    protected function createSink(int|string $key, HttpRequest $request): BatchSink
     {
-        $name = $this->fileName($key, $url);
+        $name = $this->fileName($key, $request->url());
         if (basename($name) !== $name || str_contains($name, "\0") || $name === '' || $name === '.' || $name === '..') {
             throw new InvalidArgumentException('Download file names must be plain file names without directory segments.');
         }
 
         $path = $this->directory . DIRECTORY_SEPARATOR . $name;
-        if (isset($this->reservedPaths[$path])) {
+        if (isset($this->reservedPaths[$path]) && $this->reservedPaths[$path] !== $key) {
             throw new \RuntimeException(sprintf('More than one download resolves to %s.', $path));
         }
-        $this->reservedPaths[$path] = true;
+        $this->reservedPaths[$path] = $key;
 
-        return new FileSink($path, $this->overwriteExistingFiles);
+        return new FileSink($path, $this->overwriteExistingFiles, $this->maxDownloadBytes);
     }
 
     private function fileName(int|string $key, string $url): string

@@ -16,7 +16,7 @@ final class FileSink implements BatchSink
     private int $bytes = 0;
     private ?string $failureMessage = null;
 
-    public function __construct(private readonly string $path, bool $overwrite)
+    public function __construct(private readonly string $path, bool $overwrite, private readonly ?int $maxBytes = null)
     {
         if (file_exists($path) && !$overwrite) {
             throw new RuntimeException(sprintf('Target file already exists: %s', $path));
@@ -40,6 +40,11 @@ final class FileSink implements BatchSink
 
     public function write(string $chunk): int
     {
+        if ($this->maxBytes !== null && $this->bytes + strlen($chunk) > $this->maxBytes) {
+            $this->failureMessage = sprintf('Downloaded file exceeds the %d byte limit.', $this->maxBytes);
+
+            return 0;
+        }
         $written = fwrite($this->stream, $chunk);
         if ($written === false || $written !== strlen($chunk)) {
             $this->failureMessage = 'Could not write the complete response to the temporary file.';

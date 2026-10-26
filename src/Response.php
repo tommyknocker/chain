@@ -50,6 +50,18 @@ final readonly class Response implements BatchResult
         return $this->body;
     }
 
+    public function header(string $name): ?string
+    {
+        return $this->headers[strtolower($name)][0] ?? null;
+    }
+
+    public function contentType(): ?string
+    {
+        $contentType = $this->header('content-type');
+
+        return $contentType === null ? null : strtolower(trim(explode(';', $contentType, 2)[0]));
+    }
+
     /**
      * @throws JsonException
      */

@@ -14,6 +14,7 @@ final class Report
     public function addSuccess(BatchResult $result): void
     {
         $this->successes[$result->key()] = $result;
+        unset($this->failures[$result->key()]);
     }
 
     public function addFailure(Failure $failure): void

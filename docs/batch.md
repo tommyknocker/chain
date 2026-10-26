@@ -103,6 +103,73 @@ $report = Batch::download($imageUrls)
 Names must be plain file names, not directory paths. This deliberately keeps all
 writes within `toDirectory()`.
 
+## Advanced requests, auth, and validation
+
+Simple URL arrays remain supported. For per-job HTTP settings, pass an immutable
+`HttpRequest` instead of a URL:
+
+```php
+$report = Batch::fetch([
+    'catalog' => HttpRequest::get($catalogUrl)
+        ->bearerToken($token)
+        ->query(['page' => 2])
+        ->expectJson(),
+    'partner' => HttpRequest::post($partnerUrl)
+        ->basicAuth($user, $password)
+        ->json(['event' => 'sync']),
+])->headers(['Accept' => 'application/json'])->run();
+```
+
+Batch headers are defaults; a header on `HttpRequest` replaces the same header
+for that job, case-insensitively. `bearerToken()` is a convenience for the
+Authorization header and `basicAuth()` configures cURL basic authentication.
+When credentials are present, redirects are disabled by default so secrets are
+not sent to a different host. Opt into redirect following explicitly with
+`followRedirects(true)` only when that is safe for the target.
+
+Use `expectContentType('image/*')`, `expectJson()`, or per-request equivalents
+to reject a 2xx response with an unexpected body type. Such a download is
+discarded before its temporary file is published.
+
+## Retries and events
+
+Retries are opt-in and do not block active transfers:
+
+```php
+$report = Batch::fetch($urls)
+    ->retry(HttpRetryPolicy::transient(maxAttempts: 3))
+    ->onFailed(static fn (BatchEvent $event) => logFailure($event->failure))
+    ->onProgress(static fn (BatchEvent $event) => reportProgress($event))
+    ->run();
+```
+
+The default retry policy retries only GET and HEAD requests after transport
+errors, timeouts, and 408/429/502/503/504 responses. Retrying unsafe methods
+requires `retryUnsafeMethods: true` in `HttpRetryPolicy`. Observer exceptions
+are intentionally suppressed so logging or metrics cannot change batch results.
+
+## Workload controls
+
+Use `maxJobs()` to reject unexpectedly large input before opening any HTTP
+connections. `failFast()` stops scheduling new jobs after a final failure; jobs
+already active are cleaned up. `cancel()` may be called by application code or
+an observer to stop the remaining work explicitly.
+
+```php
+$batch = Batch::download($urls)
+    ->toDirectory('/var/app/images')
+    ->maxJobs(5_000)
+    ->failFast();
+
+$batch->onProgress(static function (BatchEvent $event) use ($batch): void {
+    if (shouldStopImport()) {
+        $batch->cancel();
+    }
+});
+
+$report = $batch->run();
+```
+
 ## Working with partial failures
 
 `run()` always returns a `Report`; one failed URL does not stop other queued

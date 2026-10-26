@@ -23,8 +23,8 @@ final class FetchBatch extends AbstractBatch
         return $this;
     }
 
-    protected function createSink(int|string $key, string $url): BatchSink
+    protected function createSink(int|string $key, HttpRequest $request): BatchSink
     {
-        return new MemorySink($this->maxBodyBytes);
+        return new MemorySink($request->maxBodyBytes() ?? $this->maxBodyBytes);
     }
 }

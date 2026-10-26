@@ -7,6 +7,8 @@ namespace tommyknocker\chain\tests;
 use PHPUnit\Framework\TestCase;
 use tommyknocker\chain\Batch;
 use tommyknocker\chain\BatchFailedException;
+use tommyknocker\chain\FailureType;
+use tommyknocker\chain\HttpRequest;
 
 final class BatchTest extends TestCase
 {
@@ -74,7 +76,7 @@ final class BatchTest extends TestCase
 
         self::assertSame(['first' => 'first', 'second' => 'second'], $report->bodies());
         self::assertSame(404, $report->failure('missing')?->status());
-        self::assertSame('validation', $report->failure('missing')?->type());
+        self::assertSame(FailureType::HttpStatus, $report->failure('missing')?->type());
         self::assertFalse($report->allSucceeded());
     }
 
@@ -120,5 +122,29 @@ final class BatchTest extends TestCase
         } catch (BatchFailedException $error) {
             self::assertSame($report, $error->report());
         }
+    }
+
+    public function testRequestSupportsAuthQueryJsonAndContentTypeValidation(): void
+    {
+        $report = Batch::fetch([
+            'auth' => HttpRequest::post($this->baseUrl . '/auth')
+                ->bearerToken('test-token')
+                ->query(['page' => 2])
+                ->json(['event' => 'sync'])
+                ->expectJson(),
+        ])->run()->throwIfFailed();
+
+        self::assertSame(['query' => ['page' => '2'], 'body' => '{"event":"sync"}'], $report->response('auth')?->json());
+    }
+
+    public function testDownloadRejectsUnexpectedContentTypeAndCleansTemporaryFile(): void
+    {
+        $report = Batch::download(['image' => $this->baseUrl . '/first.txt'])
+            ->toDirectory($this->downloadDirectory)
+            ->expectContentType('image/*')
+            ->run();
+
+        self::assertSame(FailureType::ContentType, $report->failure('image')?->type());
+        self::assertFileDoesNotExist($this->downloadDirectory . '/first.txt');
     }
 }

@@ -110,6 +110,11 @@ HTTP(S) URLs through `ext-curl` with bounded concurrency and returns a `Report`.
 | `DownloadBatch::fileNamesFromKeys()` | Uses `id => url` keys as file names. |
 | `DownloadBatch::fileNameUsing(callable $resolver)` | Builds a file name from the input key and URL. |
 | `DownloadBatch::overwrite()` | Explicitly permits replacement of an existing destination file. |
+| `DownloadBatch::maxDownloadSize(int $bytes)` | Caps one streamed file and deletes its temporary file if exceeded. |
+| `HttpRequest` | Immutable per-job HTTP method, headers, query, body/JSON, auth, timeouts, and response expectations. |
+| `HttpRetryPolicy` | Opt-in, non-blocking retry policy for temporary GET/HEAD failures. |
+| `onEvent()` / `onProgress()` / `onCompleted()` / `onFailed()` | Observes immutable batch events; observer errors are suppressed. |
+| `maxJobs()` / `failFast()` / `cancel()` | Bounds accepted input, stops on a final failure, or explicitly cancels remaining work. |
 | `Report::bodies()` | Returns successful buffered bodies keyed like the input. |
 | `Report::downloads()` / `failures()` | Returns keyed successful downloads or keyed per-job failures. |
 | `Report::throwIfFailed()` | Throws `BatchFailedException`, retaining its report, when any job failed. |
