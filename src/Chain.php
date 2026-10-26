@@ -133,10 +133,33 @@ class Chain
      * Magic method to call methods on the wrapped instance.
      *
      * @param string $method The method name to call
-     * @param array<int, mixed> $args The arguments to pass to the method
+     * @param array<int|string, mixed> $args The arguments to pass to the method
      * @throws ChainMethodNotFoundException When method does not exist
      */
     public function __call(string $method, array $args): self
+    {
+        return $this->invokeMethod($method, $args);
+    }
+
+    /**
+     * Invoke a method on the wrapped object, including one whose name conflicts with Chain's API.
+     *
+     * @param string $method The wrapped-object method name
+     * @param mixed ...$args Arguments passed to the wrapped-object method
+     * @return $this
+     * @throws ChainMethodNotFoundException When the method is not callable
+     */
+    public function invoke(string $method, mixed ...$args): self
+    {
+        return $this->invokeMethod($method, $args);
+    }
+
+    /**
+     * @param string $method The method name to call
+     * @param array<int|string, mixed> $args The arguments to pass to the method
+     * @return $this
+     */
+    private function invokeMethod(string $method, array $args): self
     {
         $class = $this->instance::class;
         $cacheKey = $class . '::' . $method;
@@ -176,7 +199,11 @@ class Chain
         return $this;
     }
 
-    /** Execute a side‑effect without altering the current instance reference */
+    /**
+     * Execute a side effect without altering the current instance reference.
+     * @param callable(object): mixed $fn
+     * @return $this
+     */
     public function tap(callable $fn): self
     {
         $fn($this->instance);
@@ -199,6 +226,26 @@ class Chain
     /** Current wrapped object */
     public function instance(): object
     {
+        return $this->instance;
+    }
+
+    /**
+     * Return the current object after verifying its class.
+     *
+     * @template T of object
+     * @param class-string<T> $class
+     * @return T
+     */
+    public function requireInstance(string $class): object
+    {
+        if (!$this->instance instanceof $class) {
+            throw new ChainInvalidOperationException(sprintf(
+                'Current instance is %s, not %s.',
+                $this->instance::class,
+                $class
+            ));
+        }
+
         return $this->instance;
     }
 

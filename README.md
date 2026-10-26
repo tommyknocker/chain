@@ -36,6 +36,14 @@ composer require tommyknocker/chain
 - Every method call stays fluent; if a method returns an object, the chain context switches to it automatically
 - Use `change($idOrObject)` to jump to another object (resolved via PSR-11 container if configured)
 - Use `get()` to read the last result (or the current instance if there is no last result)
+- Use `invoke('method', ...$args)` when a wrapped-object method conflicts with Chain's own API, such as `get()` or `map()`
+- Use `requireInstance(Foo::class)` after a dynamic transition when PHPStan needs the verified receiver type
+
+## Documentation
+
+- [API reference](docs/api-reference.md)
+- [State model](docs/state-model.md)
+- [Migration guide](docs/migration.md)
 
 ## API Overview
 

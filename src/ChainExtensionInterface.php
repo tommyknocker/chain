@@ -13,7 +13,7 @@ interface ChainExtensionInterface
      * Called before a method is invoked on the wrapped object.
      *
      * @param string $method The method name being called
-     * @param array<int, mixed> $args The arguments being passed to the method
+     * @param array<int|string, mixed> $args The arguments being passed to the method
      */
     public function beforeMethodCall(string $method, array $args): void;
 

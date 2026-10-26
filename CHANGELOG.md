@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Made `timeout()` interrupt callbacks through PCNTL instead of checking elapsed time only after completion.
 - Global configuration and resolver calls now define defaults for new chains; `withConfig()` and `withResolver()` provide local overrides.
 
+### Added
+- `invoke()` for wrapped methods whose names conflict with Chain's own API.
+- `requireInstance()` with a generic PHPStan return type for runtime-verified context types.
+- API reference, state-model, and migration documentation.
+
 ### Fixed
 - Preserved `null` results and consistent current values across `pipe()`, `map()`, `change()`, and `clone()`.
 - Applied every `ChainConfig` option, including deep cloning and retry defaults.

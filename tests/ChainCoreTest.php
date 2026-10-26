@@ -223,6 +223,38 @@ final class ChainCoreTest extends TestCase
         $this->assertSame('dynamic:value', $result);
     }
 
+    public function testInvokeCallsWrappedMethodsThatConflictWithChainMethods(): void
+    {
+        $wrapped = new class () {
+            public function get(): string
+            {
+                return 'wrapped get';
+            }
+
+            public function map(string $value): string
+            {
+                return strtoupper($value);
+            }
+        };
+
+        $this->assertSame('wrapped get', Chain::of($wrapped)->invoke('get')->get());
+        $this->assertSame('VALUE', Chain::of($wrapped)->invoke('map', 'value')->get());
+    }
+
+    public function testRequireInstanceReturnsTheVerifiedCurrentObject(): void
+    {
+        $object = new DummyClass('value');
+
+        $this->assertSame($object, Chain::of($object)->requireInstance(DummyClass::class));
+    }
+
+    public function testRequireInstanceRejectsAnotherClass(): void
+    {
+        $this->expectException(ChainInvalidOperationException::class);
+
+        Chain::of(new \stdClass())->requireInstance(DummyClass::class);
+    }
+
     public function testRejectsAnInaccessibleMethodAsNotFound(): void
     {
         $this->expectException(\tommyknocker\chain\Exception\ChainMethodNotFoundException::class);

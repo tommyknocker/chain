@@ -22,9 +22,10 @@ Exit criterion: two chains can use different resolvers, retry policies, and exte
 
 ## 3. Improve developer experience and type information
 
-- Add PHPStan generic annotations for the wrapped instance and callbacks where PHP can express them reliably.
-- Add an explicit `invoke(string $method, mixed ...$arguments)` escape hatch for methods colliding with Chain's own API.
-- Publish generated API documentation and a compatibility policy.
+- Added `invoke(string $method, mixed ...$arguments)` for methods colliding with Chain's own API.
+- Added generic `requireInstance(class-string<T>): T` for runtime-verified PHPStan types after dynamic transitions.
+- Published an API reference, state model, and migration guide.
+- Define and publish a compatibility policy before the next stable release.
 - Add mutation testing or focused property/invariant tests for state transitions.
 
 Exit criterion: common misuse is caught by static analysis or produces a precise library exception.
