@@ -43,7 +43,6 @@ composer require tommyknocker/chain
 
 - [API reference](docs/api-reference.md)
 - [State model](docs/state-model.md)
-- [Migration guide](docs/migration.md)
 
 ## API Overview
 

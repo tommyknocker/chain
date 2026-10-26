@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `invoke()` for wrapped methods whose names conflict with Chain's own API.
 - `requireInstance()` with a generic PHPStan return type for runtime-verified context types.
-- API reference, state-model, and migration documentation.
+- API reference and state-model documentation.
 
 ### Fixed
 - Preserved `null` results and consistent current values across `pipe()`, `map()`, `change()`, and `clone()`.

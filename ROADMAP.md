@@ -24,7 +24,7 @@ Exit criterion: two chains can use different resolvers, retry policies, and exte
 
 - Added `invoke(string $method, mixed ...$arguments)` for methods colliding with Chain's own API.
 - Added generic `requireInstance(class-string<T>): T` for runtime-verified PHPStan types after dynamic transitions.
-- Published an API reference, state model, and migration guide.
+- Published an API reference and state model.
 - Define and publish a compatibility policy before the next stable release.
 - Add mutation testing or focused property/invariant tests for state transitions.
 
