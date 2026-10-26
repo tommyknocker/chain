@@ -35,4 +35,28 @@ final class HttpRequestTest extends TestCase
         self::assertSame('https://example.test/items?page=2', $request->url());
         self::assertSame('https://example.test/items', HttpRequest::get('https://example.test/items')->url());
     }
+
+    public function testQueryIsInsertedBeforeTheFragment(): void
+    {
+        $request = HttpRequest::get('https://example.test/items?sort=name#section')->query(['page' => 2]);
+
+        self::assertSame('https://example.test/items?sort=name&page=2#section', $request->url());
+    }
+
+    public function testSmallPositiveTimeoutsRoundUpToOneMillisecond(): void
+    {
+        $request = HttpRequest::get('https://example.test')
+            ->timeout(0.0001)
+            ->connectTimeout(0.0001);
+
+        self::assertSame(1, $request->timeoutMs());
+        self::assertSame(1, $request->connectTimeoutMs());
+    }
+
+    public function testTimeoutRejectsNonFiniteDurations(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        HttpRequest::get('https://example.test')->timeout(INF);
+    }
 }

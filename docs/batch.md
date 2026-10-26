@@ -60,12 +60,12 @@ $report = Batch::download($urls)
 
 The default file name is the final segment of the URL path; query parameters do
 not become part of the name. A URL with no usable final segment becomes
-`download-{key}`. Files are streamed into a temporary file and atomically moved
-to their final path only after a successful 2xx response.
+`download-{key}`. Files are streamed into a temporary file and atomically
+published to their final path only after a successful 2xx response.
 
-Existing files and two jobs that resolve to the same name produce individual
-failures rather than being overwritten silently. Call `overwrite()` only when
-replacement is intentional.
+Existing files, files created by another process during a download, and two jobs
+that resolve to the same name produce individual failures rather than being
+overwritten silently. Call `overwrite()` only when replacement is intentional.
 
 ### ID-to-URL maps
 
@@ -153,9 +153,11 @@ cannot change batch results.
 ## Workload controls
 
 Use `maxJobs()` to reject unexpectedly large input before opening any HTTP
-connections. `failFast()` stops scheduling new jobs after a final failure; jobs
-already active are cleaned up. `cancel()` may be called by application code or
-an observer to stop the remaining work explicitly. Cancellation is best-effort:
+connections. `failFast()` treats URL validation and sink-preparation errors as
+final failures too: if preflight fails, no transfer is started; if a failure is
+found while scheduling, active transfers are cleaned up and later jobs are not
+started. `cancel()` may be called by application code or an observer to stop
+the remaining work explicitly. Cancellation is best-effort:
 the report contains completed jobs and failures known before cancellation; it
 does not synthesize failures for work that never started.
 

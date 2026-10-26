@@ -437,7 +437,6 @@ composer test:ci          # Run tests for CI (with JUnit output)
 ### Code Quality
 ```bash
 composer phpstan          # Static analysis
-composer phpstan:baseline # Generate PHPStan baseline
 composer cs:fix           # Fix code style issues
 composer cs:check         # Check code style (dry-run)
 composer quality          # Run all quality checks

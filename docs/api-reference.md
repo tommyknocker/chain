@@ -126,8 +126,8 @@ HTTP(S) URLs through `ext-curl` with bounded concurrency and returns a `Report`.
 | `Flow::of(mixed ...$steps)` / `start()` | Creates an immutable application-step plan. |
 | `then(mixed $step)` | Returns a plan with one additional `StepInterface`, class-string, callable, or nested Flow step. |
 | `when(callable $predicate, Flow $flow)` | Runs a nested Flow only when the predicate accepts the current payload. |
-| `withResolver(?ContainerInterface)` | Resolves class-string steps through PSR-11. |
-| `withContext(array $attributes)` | Supplies read-only context values to steps. |
+| `withResolver(?ContainerInterface)` | Resolves class-string steps through PSR-11. A nested flow's resolver overrides its parent's. |
+| `withContext(array $attributes)` | Supplies read-only context values to steps. Nested flows inherit parent attributes, then override them with their own. |
 | `run(mixed $payload)` | Returns the final payload or throws `FlowFailedException`. |
 | `execute(mixed $payload)` | Returns `FlowExecution` with result, failure, stop state, and step trace. |
 | `Flow::stop(mixed $value)` | Stops the flow successfully with a final value. |

@@ -16,9 +16,9 @@ final class FileSink implements BatchSink
     private int $bytes = 0;
     private ?string $failureMessage = null;
 
-    public function __construct(private readonly string $path, bool $overwrite, private readonly ?int $maxBytes = null)
+    public function __construct(private readonly string $path, private readonly bool $overwrite, private readonly ?int $maxBytes = null)
     {
-        if (file_exists($path) && !$overwrite) {
+        if (file_exists($path) && !$this->overwrite) {
             throw new RuntimeException(sprintf('Target file already exists: %s', $path));
         }
 
@@ -61,10 +61,18 @@ final class FileSink implements BatchSink
     public function finish(int|string $key, string $url, int $status, array $headers, float $duration): BatchResult
     {
         fclose($this->stream);
-        if (!rename($this->temporaryPath, $this->path)) {
+        if ($this->overwrite) {
+            $published = rename($this->temporaryPath, $this->path);
+        } else {
+            $published = @link($this->temporaryPath, $this->path);
+            if ($published) {
+                @unlink($this->temporaryPath);
+            }
+        }
+        if (!$published) {
             @unlink($this->temporaryPath);
 
-            throw new RuntimeException(sprintf('Could not move downloaded file to %s.', $this->path));
+            throw new RuntimeException(sprintf('Could not publish downloaded file to %s without replacing an existing file.', $this->path));
         }
 
         return new Download($key, $url, $status, $headers, $duration, $this->path, $this->bytes);

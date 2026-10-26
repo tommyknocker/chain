@@ -46,18 +46,14 @@ abstract class AbstractBatch
 
     public function timeout(float $seconds): static
     {
-        if ($seconds <= 0) {
-            throw new InvalidArgumentException('Timeout must be greater than zero.');
-        } $this->timeoutMs = (int) round($seconds * 1000);
+        $this->timeoutMs = $this->milliseconds($seconds, 'Timeout');
 
         return $this;
     }
 
     public function connectTimeout(float $seconds): static
     {
-        if ($seconds <= 0) {
-            throw new InvalidArgumentException('Connect timeout must be greater than zero.');
-        } $this->connectTimeoutMs = (int) round($seconds * 1000);
+        $this->connectTimeoutMs = $this->milliseconds($seconds, 'Connect timeout');
 
         return $this;
     }
@@ -233,7 +229,7 @@ abstract class AbstractBatch
                     }
                 }
                 $delayed = array_values($delayed);
-                while (count($active) < $this->concurrency && $next < count($pending)) {
+                while (!$this->cancelled && count($active) < $this->concurrency && $next < count($pending)) {
                     [$key, $request, $attempt] = $pending[$next++];
                     $sink = null;
 
@@ -248,9 +244,17 @@ abstract class AbstractBatch
                         $failure = new Failure($key, $request->url(), FailureType::Preparation, $error->getMessage(), attempts: $attempt);
                         $report->addFailure($failure);
                         $this->emit(new BatchEvent(BatchEventType::Failed, $key, $request->url(), $attempt, failure: $failure));
+                        if ($this->failFast) {
+                            $this->cancelled = true;
+                        }
                     }
                 }
                 if ($active === []) {
+                    if ($delayed !== []) {
+                        $earliest = min(array_column($delayed, 0));
+                        $this->sleep((int) max(1_000, min(1_000_000, ($earliest - microtime(true)) * 1_000_000)));
+                    }
+
                     continue;
                 }
                 do {
@@ -269,7 +273,6 @@ abstract class AbstractBatch
                     curl_multi_remove_handle($multi, $handle);
                     [$transfer, $attempt] = $entry;
                     $failure = $this->complete($report, $transfer, $completed['result'], $attempt);
-                    curl_close($handle);
                     $retryPolicy = $this->retryPolicy;
                     if ($failure !== null && $retryPolicy !== null && $retryPolicy->shouldRetry($failure, $transfer->request(), $attempt)) {
                         $this->emit(new BatchEvent(BatchEventType::AttemptFailed, $transfer->key(), $transfer->url(), $attempt, failure: $failure));
@@ -282,19 +285,19 @@ abstract class AbstractBatch
                     } elseif ($failure !== null) {
                         $this->emit(new BatchEvent(BatchEventType::Failed, $transfer->key(), $transfer->url(), $attempt, failure: $failure));
                     }
+                    unset($transfer, $entry, $handle);
                 }
                 if ($active === [] && $delayed !== []) {
                     $earliest = min(array_column($delayed, 0));
-                    usleep((int) max(1_000, min(1_000_000, ($earliest - microtime(true)) * 1_000_000)));
+                    $this->sleep((int) max(1_000, min(1_000_000, ($earliest - microtime(true)) * 1_000_000)));
                 } elseif ($active !== [] && curl_multi_select($multi, 1.0) === -1) {
-                    usleep(1_000);
+                    $this->sleep(1_000);
                 }
             }
         } finally {
             foreach ($active as [$transfer]) {
                 $transfer->sink()->abort();
                 curl_multi_remove_handle($multi, $transfer->handle());
-                curl_close($transfer->handle());
             } curl_multi_close($multi);
         }
 
@@ -317,7 +320,13 @@ abstract class AbstractBatch
             } $seen[$key] = true;
             $request = is_string($value) ? HttpRequest::get($value) : $value;
             if (!$this->isHttpUrl($request->url())) {
-                $report->addFailure(new Failure($key, $request->url(), FailureType::Validation, 'A job URL must be a valid HTTP or HTTPS URL.'));
+                $failure = new Failure($key, $request->url(), FailureType::Validation, 'A job URL must be a valid HTTP or HTTPS URL.');
+                $report->addFailure($failure);
+                $this->emit(new BatchEvent(BatchEventType::Failed, $key, $request->url(), 1, failure: $failure));
+                if ($this->failFast) {
+                    return [];
+                }
+
                 continue;
             }
             $jobs[] = [$key, $this->applyDefaults($request), 1];
@@ -435,6 +444,20 @@ abstract class AbstractBatch
         $scheme = parse_url($url, PHP_URL_SCHEME);
 
         return is_string($scheme) && in_array(strtolower($scheme), ['http', 'https'], true) && filter_var($url, FILTER_VALIDATE_URL) !== false;
+    }
+
+    private function milliseconds(float $seconds, string $name): int
+    {
+        if (!is_finite($seconds) || $seconds <= 0 || $seconds > PHP_INT_MAX / 1000) {
+            throw new InvalidArgumentException($name . ' must be a finite positive duration.');
+        }
+
+        return max(1, (int) ceil($seconds * 1000));
+    }
+
+    protected function sleep(int $microseconds): void
+    {
+        usleep($microseconds);
     }
 
     private function emit(BatchEvent $event): void

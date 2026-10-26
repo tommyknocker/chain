@@ -28,7 +28,13 @@ $flow = Flow::of(
 
 `then()` returns a new plan, so base flows are safe to reuse. A nested flow is a
 grouping boundary, not a separate job: a failure or `Flow::stop()` propagates to
-the outer flow.
+the outer flow. It inherits its parent's context; attributes and resolver set
+on the nested flow override inherited values.
+
+Flow immutability applies to the plan itself: its ordered step definitions,
+context settings, and observers are never mutated. It does not clone a step
+object, closure capture, or payload. Reusable flows should therefore use
+stateless steps, or steps whose state is deliberately safe to share.
 
 ## Named steps and dependency resolution
 

@@ -105,7 +105,10 @@ final class HttpRequest
         }
 
         $clone = clone $this;
-        $clone->url .= str_contains($clone->url, '?') ? '&' . $query : '?' . $query;
+        $fragmentPosition = strpos($clone->url, '#');
+        $url = $fragmentPosition === false ? $clone->url : substr($clone->url, 0, $fragmentPosition);
+        $fragment = $fragmentPosition === false ? '' : substr($clone->url, $fragmentPosition);
+        $clone->url = $url . (str_contains($url, '?') ? '&' : '?') . $query . $fragment;
 
         return $clone;
     }
@@ -139,24 +142,16 @@ final class HttpRequest
 
     public function timeout(float $seconds): self
     {
-        if ($seconds <= 0) {
-            throw new InvalidArgumentException('Timeout must be greater than zero.');
-        }
-
         $clone = clone $this;
-        $clone->timeoutMs = (int) round($seconds * 1000);
+        $clone->timeoutMs = self::milliseconds($seconds, 'Timeout');
 
         return $clone;
     }
 
     public function connectTimeout(float $seconds): self
     {
-        if ($seconds <= 0) {
-            throw new InvalidArgumentException('Connect timeout must be greater than zero.');
-        }
-
         $clone = clone $this;
-        $clone->connectTimeoutMs = (int) round($seconds * 1000);
+        $clone->connectTimeoutMs = self::milliseconds($seconds, 'Connect timeout');
 
         return $clone;
     }
@@ -260,5 +255,14 @@ final class HttpRequest
     public function maxBodyBytes(): ?int
     {
         return $this->maxBodyBytes;
+    }
+
+    private static function milliseconds(float $seconds, string $name): int
+    {
+        if (!is_finite($seconds) || $seconds <= 0 || $seconds > PHP_INT_MAX / 1000) {
+            throw new InvalidArgumentException($name . ' must be a finite positive duration.');
+        }
+
+        return max(1, (int) ceil($seconds * 1000));
     }
 }

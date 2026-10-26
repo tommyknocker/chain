@@ -51,8 +51,7 @@ final class Flow
                 return $payload;
             }
 
-            $nested = $context->resolver() === null ? $flow : $flow->withResolver($context->resolver());
-            $execution = $nested->execute($payload);
+            $execution = $flow->executeNested($payload, $context);
             $failure = $execution->failure();
 
             if ($failure !== null) {
@@ -96,7 +95,15 @@ final class Flow
 
     public function execute(mixed $payload): FlowExecution
     {
-        $context = new FlowContext($this->contextAttributes, $this->resolver ?? null);
+        return $this->executeNested($payload);
+    }
+
+    private function executeNested(mixed $payload, ?FlowContext $parentContext = null): FlowExecution
+    {
+        $context = new FlowContext(
+            [...($parentContext?->attributes() ?? []), ...$this->contextAttributes],
+            $this->resolver ?? $parentContext?->resolver(),
+        );
         $trace = [];
 
         foreach ($this->steps as $index => $definition) {
@@ -132,8 +139,7 @@ final class Flow
     private function invoke(mixed $definition, mixed $payload, FlowContext $context): mixed
     {
         if ($definition instanceof self) {
-            $nested = $context->resolver() === null ? $definition : $definition->withResolver($context->resolver());
-            $execution = $nested->execute($payload);
+            $execution = $definition->executeNested($payload, $context);
             $failure = $execution->failure();
 
             if ($failure !== null) {

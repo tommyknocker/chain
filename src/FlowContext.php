@@ -27,4 +27,10 @@ final readonly class FlowContext
     {
         return $this->resolver;
     }
+
+    /** @return array<string, mixed> */
+    public function attributes(): array
+    {
+        return $this->attributes;
+    }
 }

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-26
+
+### Fixed
+- Made download publication non-replacing and atomic when `overwrite()` is not enabled, preventing a competing process from replacing a newly created target file.
+- Made `failFast()` stop work for URL validation and sink-preparation failures, and emit lifecycle failures for invalid URLs.
+- Removed busy waiting while retries are delayed and removed deprecated `curl_close()` calls on PHP 8.5.
+- Preserved URL fragments when adding query parameters and rounded positive Batch/HTTP timeouts up to one millisecond.
+- Made nested Flow context inheritance explicit: child attributes and resolver settings override inherited parent values.
+- Removed the nonexistent `composer phpstan:baseline` command from the README.
+
 ## [2.0.0] - 2026-10-26
 
 ### Changed
@@ -31,7 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prevented the release script from overwriting existing tags.
 - Made PCNTL optional for installation; only `Chain::timeout()` requires it.
 
-[Unreleased]: https://github.com/tommyknocker/chain/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/tommyknocker/chain/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/tommyknocker/chain/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/tommyknocker/chain/compare/v1.2.0...v2.0.0
 
 ## [1.2.0] - 2025-10-25

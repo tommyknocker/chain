@@ -11,6 +11,8 @@ match ($path) {
     '/json' => printJson(),
     '/auth' => authenticated(),
     '/large.txt' => printText(str_repeat('x', 128)),
+    '/flaky' => flaky(),
+    '/slow' => slow(),
     default => missing(),
 };
 
@@ -51,4 +53,27 @@ function missing(): never
     header('Content-Type: text/plain');
     echo 'missing';
     exit;
+}
+
+function flaky(): never
+{
+    $state = preg_replace('/[^a-z0-9]/', '', $_GET['state'] ?? '') ?: 'default';
+    $path = sys_get_temp_dir() . '/chain-batch-flaky-' . $state;
+    $attempt = (int) @file_get_contents($path) + 1;
+    file_put_contents($path, (string) $attempt, LOCK_EX);
+
+    if ($attempt === 1) {
+        http_response_code(503);
+        header('Content-Type: text/plain');
+        echo 'retry';
+        exit;
+    }
+
+    printText('recovered');
+}
+
+function slow(): never
+{
+    usleep(250_000);
+    printText('slow');
 }
